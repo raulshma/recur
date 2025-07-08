@@ -1,0 +1,6 @@
+@RecurApi_HostAddress = http://localhost:5116
+
+GET {{RecurApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
