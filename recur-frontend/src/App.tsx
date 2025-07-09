@@ -23,8 +23,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="loading-spinner w-8 h-8"></div>
+          <div className="text-sm text-gray-600 font-medium">Loading...</div>
+        </div>
       </div>
     );
   }
@@ -38,8 +41,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="loading-spinner w-8 h-8"></div>
+          <div className="text-sm text-gray-600 font-medium">Loading...</div>
+        </div>
       </div>
     );
   }
@@ -101,7 +107,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen bg-gray-50 antialiased">
             <AppRoutes />
           </div>
         </Router>

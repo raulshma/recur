@@ -1,6 +1,7 @@
 // Global components
-@import 'functions';
-@import 'mixins';
+@use "sass:meta";
+@use 'functions';
+@use 'mixins';
 
 $sm: 576px;
 $md: 768px;
@@ -1034,7 +1035,7 @@ $xxl: 1600px;
 
 @layer base {
     /* stylelint-disable-next-line no-invalid-position-at-import-rule */ // allowing @import to be inside layer
-    @import '../../node_modules/react-toastify/dist/ReactToastify'; // Toastify is in base so that we can override
+    @include meta.load-css('../../node_modules/react-toastify/dist/ReactToastify'); // Toastify is in base so that we can override
 
     /* stylelint-disable-next-line order/order */ // allowing @import to be first
     *,
@@ -1214,7 +1215,7 @@ $xxl: 1600px;
         min-height: 2.5rem;
         margin: 1rem 0 0.25rem;
 
-        @include screen($md) {
+        @include mixins.screen($md) {
             flex-wrap: nowrap;
         }
     }
