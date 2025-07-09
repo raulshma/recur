@@ -1,7 +1,11 @@
 import axios, { type AxiosInstance, AxiosError } from 'axios';
 import type { ApiError } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:7041/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+if(!API_BASE_URL) {
+  throw new Error('API_BASE_URL is not set');
+}
 
 class ApiClient {
   private client: AxiosInstance;

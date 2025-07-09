@@ -1,11 +1,283 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
-  </head>
+    <title>Recur</title>
+
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      rel="stylesheet"
+      crossorigin="anonymous"
+    />
+
+    <style>
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        display: -ms-flexbox;
+        display: flex;
+        -ms-flex-align: center;
+        align-items: center;
+        padding-top: 40px;
+        padding-bottom: 40px;
+      }
+
+      .auth-frame {
+        margin: 0 auto;
+        max-width: 450px;
+        padding: 0 1rem;
+      }
+
+      .auth-frame ul {
+        padding: 0 1rem 1rem !important;
+      }
+
+      .auth-frame li {
+        list-style: disc !important;
+      }
+
+      .logo-frame {
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+
+      .logo-frame svg {
+        height: 30px;
+      }
+
+      .form-signin {
+        background: #eeefe9;
+        border-radius: 0.5rem;
+        border: solid 1px #d0d1c9;
+        border-bottom-width: 3px;
+        margin: auto;
+        max-width: 450px;
+        padding: 2rem;
+        width: 100%;
+      }
+
+      .form-signin .checkbox {
+        font-weight: normal;
+      }
+
+      .form-signin .form-control {
+        position: relative;
+        box-sizing: border-box;
+        height: auto;
+        padding: 10px;
+        font-size: 16px;
+      }
+
+      .form-signin .form-control:focus {
+        z-index: 2;
+      }
+
+      .form-signin-inputs input {
+        border-radius: 0;
+        margin-bottom: -1px;
+      }
+
+      .form-signin-inputs input:first-child {
+        border-radius: var(--radius) 0.25rem 0 0;
+      }
+
+      .form-signin input:last-child {
+        border-radius: 0 0 0.25rem 0.25rem;
+      }
+
+      .field {
+        display: flex;
+        flex-flow: column-reverse;
+        margin-bottom: 1em;
+      }
+
+      .field label,
+      .field input {
+        transition: all 0.2s;
+        touch-action: manipulation;
+        color: #495057;
+      }
+
+      .field input {
+        font-size: 1.5em;
+        border: 0;
+        border-bottom: 1px solid #ccc;
+        font-family: inherit;
+        -webkit-appearance: none;
+        border-radius: 0;
+        padding: 0;
+        cursor: text;
+      }
+
+      .field input:focus {
+        outline: 0;
+        border-bottom: 1px solid #666;
+      }
+
+      input:placeholder-shown + label {
+        cursor: text;
+        max-width: 66.66%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transform-origin: left bottom;
+        transform: translate(0, 2.125rem) scale(1.5);
+      }
+
+      ::-webkit-input-placeholder {
+        opacity: 0;
+        transition: inherit;
+      }
+
+      input:focus::-webkit-input-placeholder {
+        opacity: 1;
+      }
+
+      input:not(:placeholder-shown) + label,
+      input:focus + label {
+        transform: translate(0, 0) scale(1);
+        cursor: pointer;
+        color: var(--accent);
+      }
+
+      h2 {
+        font-size: 1.5rem;
+        font-weight: 600 !important;
+      }
+
+      .button {
+        animation-delay: 1.2s;
+        animation-direction: normal;
+        animation-duration: 3s;
+        animation-fill-mode: both;
+        animation-iteration-count: 1;
+        animation-play-state: running;
+        animation-range-end: normal;
+        animation-range-start: normal;
+        animation-timeline: auto;
+        animation-timing-function: ease;
+        background-color: rgb(205, 132, 7);
+        border-bottom-color: rgb(177, 120, 22);
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        border-bottom-style: solid;
+        border-bottom-width: 1.5px;
+        border-image-outset: 0;
+        border-image-repeat: stretch;
+        border-image-slice: 100%;
+        border-image-source: none;
+        border-image-width: 1;
+        border-left-color: rgb(177, 120, 22);
+        border-left-style: solid;
+        border-left-width: 1.5px;
+        border-right-color: rgb(177, 120, 22);
+        border-right-style: solid;
+        border-right-width: 1.5px;
+        border-top-color: rgb(177, 120, 22);
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+        border-top-style: solid;
+        border-top-width: 1.5px;
+        box-sizing: border-box;
+        color: rgb(21, 21, 21);
+        cursor: pointer;
+        display: block;
+        font-family: "Emoji Flags Polyfill", MatterVF, -apple-system,
+          "system-ui", "avenir next", avenir, "segoe ui", "helvetica neue",
+          helvetica, Ubuntu, roboto, noto, arial, "sans-serif";
+        font-feature-settings: normal;
+        font-variant-ligatures: none;
+        font-variant-numeric: normal;
+        font-variation-settings: "wght" 600;
+        font-weight: 600;
+        height: 44.5px;
+        line-height: 24px;
+        overflow-wrap: break-word;
+        position: relative;
+        tab-size: 4;
+        text-align: center;
+        text-decoration-color: rgb(21, 21, 21);
+        text-decoration-line: none;
+        text-decoration-style: solid;
+        text-decoration-thickness: auto;
+        text-size-adjust: 100%;
+        top: 2px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .button span {
+        background-color: rgb(235, 157, 42);
+        border-bottom-color: rgb(177, 120, 22);
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        border-bottom-style: solid;
+        border-bottom-width: 1.5px;
+        border-image-outset: 0;
+        border-image-repeat: stretch;
+        border-image-slice: 100%;
+        border-image-source: none;
+        border-image-width: 1;
+        border-left-color: rgb(177, 120, 22);
+        border-left-style: solid;
+        border-left-width: 1.5px;
+        border-right-color: rgb(177, 120, 22);
+        border-right-style: solid;
+        border-right-width: 1.5px;
+        border-top-color: rgb(177, 120, 22);
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+        border-top-style: solid;
+        border-top-width: 1.5px;
+        box-sizing: border-box;
+        color: rgb(21, 21, 21);
+        cursor: pointer;
+        display: block;
+        font-family: "Emoji Flags Polyfill", MatterVF, -apple-system,
+          "system-ui", "avenir next", avenir, "segoe ui", "helvetica neue",
+          helvetica, Ubuntu, roboto, noto, arial, "sans-serif";
+        font-feature-settings: normal;
+        font-size: 15px;
+        font-variant-ligatures: none;
+        font-variant-numeric: normal;
+        font-variation-settings: "wght" 800;
+        font-weight: 700;
+        height: 41.5px;
+        line-height: 22.5px;
+        margin-left: -1.5px;
+        margin-right: -1.5px;
+        overflow-wrap: break-word;
+        padding-bottom: 8px;
+        padding-left: 20px;
+        padding-right: 20px;
+        padding-top: 8px;
+        position: relative;
+        tab-size: 4;
+        text-align: center;
+        text-size-adjust: 100%;
+        transform: matrix(1, 0, 0, 1, 0, -4);
+        user-select: none;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .button:hover {
+        text-decoration: none;
+      }
+
+      .button:hover span {
+        top: -2px;
+      }
+
+      .button:active span {
+        top: 0.5px;
+      }
+    </style>
+    <meta name="theme-color" content="">  
+</head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
