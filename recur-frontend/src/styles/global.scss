@@ -186,6 +186,22 @@ body {
   @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
 }
 
+.card-header {
+  @apply mb-4 pb-4 border-b border-gray-100;
+}
+
+.card-title {
+  @apply text-lg font-semibold text-gray-900;
+}
+
+.card-description {
+  @apply mt-1 text-sm text-gray-600;
+}
+
+.card-content {
+  @apply pt-4;
+}
+
 /* PostHog form styles */
 .form-input {
   @apply block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm;
@@ -197,6 +213,10 @@ body {
 
 .form-error {
   @apply text-sm text-danger-600 mt-1;
+}
+
+.form-checkbox {
+  @apply h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 focus:ring-2;
 }
 
 /* PostHog-style transitions */

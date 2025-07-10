@@ -128,3 +128,4 @@ export interface DashboardStats {
   upcomingBills: number;
   trialEnding: number;
 } 
+
