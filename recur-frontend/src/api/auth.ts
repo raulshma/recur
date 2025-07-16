@@ -36,6 +36,10 @@ export const authApi = {
     return userStr ? JSON.parse(userStr) : null;
   },
 
+  getStoredToken(): string | null {
+    return localStorage.getItem('auth_token');
+  },
+
   storeAuthData(token: string, user: User) {
     localStorage.setItem('auth_token', token);
     localStorage.setItem('user', JSON.stringify(user));

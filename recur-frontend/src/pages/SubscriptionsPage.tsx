@@ -52,6 +52,7 @@ import { useAuth } from '../context/AuthContext';
 
 const SubscriptionsPage: React.FC = () => {
   const { user } = useAuth();
+  const userCurrency = user?.currency || 'USD';
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -118,7 +119,7 @@ const SubscriptionsPage: React.FC = () => {
       categoryId: '',
       description: '',
       website: '',
-      currency: user?.currency || 'USD',
+      currency: userCurrency,
       isTrial: false,
     },
   });
@@ -176,12 +177,15 @@ const SubscriptionsPage: React.FC = () => {
       key: 'cost' as keyof Subscription,
       header: 'Cost',
       sortable: true,
-      render: (value: number, row: Subscription) => (
-        <div>
-          <div className="font-medium">{formatCurrency(value, row.currency)}</div>
-          <div className="text-sm text-gray-500">{getBillingCycleText(row.billingCycle)}</div>
-        </div>
-      ),
+      render: (value: number, row: Subscription) => {
+        console.log(`Formatting subscription ${row.name}: ${value} ${row.currency}`);
+        return (
+          <div>
+            <div className="font-medium">{formatCurrency(value, row.currency)}</div>
+            <div className="text-sm text-gray-500">{getBillingCycleText(row.billingCycle)}</div>
+          </div>
+        );
+      },
     },
     {
       key: 'category' as keyof Subscription,

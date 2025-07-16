@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
+  updateUser: (user: User) => void;
   isAuthenticated: boolean;
 }
 
@@ -35,9 +36,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (authApi.isAuthenticated()) {
           const storedUser = authApi.getStoredUser();
           if (storedUser) {
-            // Verify token is still valid by fetching current user
-            const currentUser = await authApi.getCurrentUser();
-            setUser(currentUser);
+            // Set stored user first for immediate display
+            setUser(storedUser);
+            try {
+              // Verify token is still valid by fetching current user
+              const currentUser = await authApi.getCurrentUser();
+              // Update with fresh data from server
+              setUser(currentUser);
+              // Update stored data with fresh data
+              const token = authApi.getStoredToken();
+              if (token) {
+                authApi.storeAuthData(token, currentUser);
+              }
+            } catch (error) {
+              // If API call fails but we have stored user, keep using stored user
+              console.warn('Failed to fetch current user, using stored data:', error);
+            }
           }
         }
       } catch (error) {
@@ -86,12 +100,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
+  const updateUser = (updatedUser: User) => {
+    console.log('AuthContext: Updating user with:', updatedUser);
+    setUser(updatedUser);
+    // Update stored user data as well
+    const token = authApi.getStoredToken();
+    if (token) {
+      authApi.storeAuthData(token, updatedUser);
+      console.log('AuthContext: Stored updated user data');
+    }
+  };
+
   const value: AuthContextType = {
     user,
     loading,
     login,
     register,
     logout,
+    updateUser,
     isAuthenticated: !!user,
   };
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { analyticsApi, type AnalyticsOverview, type MonthlySpending, type CategorySpending, type YearlyComparison, type TopSubscription, type Insight, type SpendingPatterns } from '../api/analytics';
+import { useAuth } from '../context/AuthContext';
+import { formatCurrency } from '../lib/utils';
 import {
   ChartBarIcon,
   CurrencyDollarIcon,
@@ -27,6 +29,7 @@ import { Progress } from '@/components/ui/progress';
 import { EmptyState } from '@/components/ui/empty-state';
 
 const AnalyticsPage: React.FC = () => {
+  const { user } = useAuth();
   const [timeRange, setTimeRange] = useState('12months');
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
@@ -75,17 +78,18 @@ const AnalyticsPage: React.FC = () => {
     }
   };
 
-  // Create stats array from API data
+  // Create stats array from API data - force re-render when user changes
+  const userCurrency = user?.currency || 'USD';
   const overviewStats = analyticsOverview ? [
     {
       title: 'Total Spent',
-      value: `$${analyticsOverview.totalSpent.toFixed(2)}`,
+      value: formatCurrency(analyticsOverview.totalSpent, userCurrency),
       change: { value: 0, type: 'neutral' as const, period: 'from last month' },
       icon: <CurrencyDollarIcon className="h-6 w-6" />,
     },
     {
       title: 'Monthly Average',
-      value: `$${analyticsOverview.monthlyAverage.toFixed(2)}`,
+      value: formatCurrency(analyticsOverview.monthlyAverage, userCurrency),
       change: { value: 0, type: 'neutral' as const, period: 'from last month' },
       icon: <ArrowTrendingUpIcon className="h-6 w-6" />,
     },
@@ -97,7 +101,7 @@ const AnalyticsPage: React.FC = () => {
     },
     {
       title: 'Savings Potential',
-      value: `$${analyticsOverview.savingsPotential.toFixed(2)}`,
+      value: formatCurrency(analyticsOverview.savingsPotential, userCurrency),
       change: { value: 0, type: 'neutral' as const, period: 'unused services' },
       icon: <BanknotesIcon className="h-6 w-6" />,
     },
@@ -281,7 +285,7 @@ const AnalyticsPage: React.FC = () => {
                             />
                             <span className="text-sm font-medium">{category.name}</span>
                           </div>
-                          <span className="text-sm text-gray-600">${category.value.toFixed(2)}</span>
+                          <span className="text-sm text-gray-600">{formatCurrency(category.value, userCurrency)}</span>
                         </div>
                       ))}
                     </div>
@@ -323,7 +327,7 @@ const AnalyticsPage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         {getTrendIcon(subscription.trend)}
-                        <span className="font-bold">${subscription.cost.toFixed(2)}/mo</span>
+                        <span className="font-bold">{formatCurrency(subscription.cost, userCurrency)}/mo</span>
                       </div>
                     </div>
                   ))}
@@ -388,7 +392,7 @@ const AnalyticsPage: React.FC = () => {
                             />
                             <span className="font-medium">{category.name}</span>
                           </div>
-                          <span className="text-sm text-gray-600">${category.value.toFixed(2)}</span>
+                          <span className="text-sm text-gray-600">{formatCurrency(category.value, userCurrency)}</span>
                         </div>
                         <Progress 
                           value={(category.value / Math.max(...categoryData.map(c => c.value))) * 100} 
@@ -441,7 +445,7 @@ const AnalyticsPage: React.FC = () => {
                             <div className="flex items-center justify-between">
                               {insight.savings > 0 && (
                                 <span className="text-sm font-medium text-green-600">
-                                  Save ${insight.savings.toFixed(2)}/month
+                                  Save {formatCurrency(insight.savings, userCurrency)}/month
                                 </span>
                               )}
                               <Button variant="outline" size="sm">

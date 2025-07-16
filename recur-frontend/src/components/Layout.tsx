@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { formatCurrency } from '../lib/utils';
 import {
   HomeIcon,
   RectangleStackIcon,
@@ -176,7 +177,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Monthly Spend</span>
               <span className="text-sm font-medium">
-                ${dashboardStats?.totalMonthlyCost?.toFixed(2) || '0.00'}
+                {dashboardStats?.totalMonthlyCost 
+                  ? formatCurrency(dashboardStats.totalMonthlyCost, user?.currency || 'USD')
+                  : formatCurrency(0, user?.currency || 'USD')
+                }
               </span>
             </div>
             <div className="flex items-center justify-between">

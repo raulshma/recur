@@ -128,8 +128,11 @@ const SettingsPage: React.FC = () => {
   const onProfileSubmit = async (data: UpdateProfileRequest) => {
     try {
       setLoading(true);
+      console.log('Submitting profile update with data:', data);
       const response = await settingsApi.updateProfile(data);
+      console.log('Profile update response:', response);
       if (response.success && response.user) {
+        console.log('Updating user context with:', response.user);
         updateUser(response.user);
         // Show success message
         console.log('Profile updated successfully');
@@ -164,14 +167,16 @@ const SettingsPage: React.FC = () => {
     if (!userSettings) return;
 
     const updatedSettings = { ...userSettings, [key]: value };
+    console.log(`Updating setting ${key} to:`, value);
     setUserSettings(updatedSettings);
 
     try {
       const response = await settingsApi.updateUserSettings(updatedSettings);
-      console.log('Settings updated successfully');
+      console.log('Settings update response:', response);
       
       // If currency was changed, update the user context as well
       if (key === 'defaultCurrency' && response.user) {
+        console.log('Currency changed, updating user context with:', response.user);
         updateUser(response.user);
       }
     } catch (error) {

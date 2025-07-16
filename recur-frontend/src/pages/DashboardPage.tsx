@@ -24,6 +24,12 @@ import { formatCurrency } from '../lib/utils';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
+  
+  // Debug: Log user currency and force re-render when it changes
+  useEffect(() => {
+    console.log('DashboardPage: Current user currency:', user?.currency);
+    console.log('DashboardPage: Full user object:', user);
+  }, [user?.currency, user]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [monthlySpendingData, setMonthlySpendingData] = useState<MonthlySpending[]>([]);
   const [categoryData, setCategoryData] = useState<CategorySpending[]>([]);
@@ -64,11 +70,12 @@ const DashboardPage: React.FC = () => {
     }
   }, [user]);
 
-  // Create stats array from API data
+  // Create stats array from API data - force re-render when user changes
+  const userCurrency = user?.currency || 'USD';
   const stats = dashboardStats ? [
     {
       title: 'Monthly Cost',
-      value: formatCurrency(dashboardStats.totalMonthlyCost, user?.currency || 'USD'),
+      value: formatCurrency(dashboardStats.totalMonthlyCost, userCurrency),
       change: { value: 0, type: 'neutral' as const, period: 'from last month' },
       icon: <CurrencyDollarIcon className="h-6 w-6" />,
     },
@@ -249,7 +256,7 @@ const DashboardPage: React.FC = () => {
                           />
                           <span className="text-sm font-medium">{category.name}</span>
                         </div>
-                        <span className="text-sm text-gray-600">{formatCurrency(category.value, user?.currency || 'USD')}</span>
+                        <span className="text-sm text-gray-600">{formatCurrency(category.value, userCurrency)}</span>
                       </div>
                     ))}
                   </div>
@@ -296,7 +303,7 @@ const DashboardPage: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="warning">{formatCurrency(bill.amount, user?.currency || 'USD')}</Badge>
+                      <Badge variant="warning">{formatCurrency(bill.amount, userCurrency)}</Badge>
                     </div>
                   ))}
                 </div>
@@ -341,7 +348,7 @@ const DashboardPage: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-3">
                   {dashboardStats?.activeSubscriptions === 0 
                     ? "Add your first subscription to start getting insights about your spending patterns."
-                    : `You have ${dashboardStats?.activeSubscriptions} active subscriptions costing ${formatCurrency(dashboardStats?.totalMonthlyCost || 0, user?.currency || 'USD')} per month.`
+                    : `You have ${dashboardStats?.activeSubscriptions} active subscriptions costing ${formatCurrency(dashboardStats?.totalMonthlyCost || 0, userCurrency)} per month.`
                   }
                 </p>
                 <Button variant="link" className="p-0 h-auto text-orange-600">
