@@ -235,6 +235,15 @@ public class AuthController : ControllerBase
             });
         }
 
+        // Sync currency with user settings to keep them consistent
+        var settings = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == user.Id);
+        if (settings != null && settings.DefaultCurrency != dto.Currency)
+        {
+            settings.DefaultCurrency = dto.Currency;
+            settings.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
         return Ok(new AuthResponseDto
         {
             Success = true,
@@ -256,14 +265,23 @@ public class AuthController : ControllerBase
         var settings = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == user.Id);
         if (settings == null)
         {
-            // Create default settings
+            // Create default settings using user's current currency
             settings = new UserSettings
             {
                 UserId = user.Id,
+                DefaultCurrency = user.Currency,
+                TimeZone = user.TimeZone ?? "UTC",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
             _context.UserSettings.Add(settings);
+            await _context.SaveChangesAsync();
+        }
+        else if (settings.DefaultCurrency != user.Currency)
+        {
+            // Sync currency if they're out of sync - user profile takes precedence
+            settings.DefaultCurrency = user.Currency;
+            settings.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
 
@@ -306,12 +324,20 @@ public class AuthController : ControllerBase
         settings.DashboardLayout = dto.DashboardLayout;
         settings.UpdatedAt = DateTime.UtcNow;
 
+        // Sync currency with user profile to keep them consistent
+        if (user.Currency != dto.DefaultCurrency)
+        {
+            user.Currency = dto.DefaultCurrency;
+            await _userManager.UpdateAsync(user);
+        }
+
         await _context.SaveChangesAsync();
 
         return Ok(new AuthResponseDto
         {
             Success = true,
-            Message = "Settings updated successfully"
+            Message = "Settings updated successfully",
+            User = MapToUserDto(user)
         });
     }
 

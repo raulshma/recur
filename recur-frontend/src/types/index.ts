@@ -32,6 +32,7 @@ export interface User {
   currency: string;
   createdAt: string;
   lastLoginAt?: string;
+  budgetLimit: number;
 }
 
 // Subscription Types

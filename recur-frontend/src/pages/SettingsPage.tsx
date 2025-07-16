@@ -47,6 +47,7 @@ import { useForm } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import { settingsApi, type UserSettings, type UpdateProfileRequest, type UpdateUserSettingsRequest } from '../api/settings';
+import { SUPPORTED_CURRENCIES } from '@/lib/utils';
 
 const SettingsPage: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -105,15 +106,6 @@ const SettingsPage: React.FC = () => {
       setSettingsLoading(false);
     }
   };
-
-  const currencies = [
-    { value: 'USD', label: 'US Dollar ($)' },
-    { value: 'EUR', label: 'Euro' },
-    { value: 'GBP', label: 'British Pound' },
-    { value: 'CAD', label: 'Canadian Dollar' },
-    { value: 'AUD', label: 'Australian Dollar' },
-    { value: 'JPY', label: 'Japanese Yen' },
-  ];
 
   const timeZones = [
     { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
@@ -175,8 +167,13 @@ const SettingsPage: React.FC = () => {
     setUserSettings(updatedSettings);
 
     try {
-      await settingsApi.updateUserSettings(updatedSettings);
+      const response = await settingsApi.updateUserSettings(updatedSettings);
       console.log('Settings updated successfully');
+      
+      // If currency was changed, update the user context as well
+      if (key === 'defaultCurrency' && response.user) {
+        updateUser(response.user);
+      }
     } catch (error) {
       console.error('Failed to update settings:', error);
       // Revert the change on error
@@ -352,7 +349,7 @@ const SettingsPage: React.FC = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {currencies.map((currency) => (
+                              {SUPPORTED_CURRENCIES.map((currency) => (
                                 <SelectItem key={currency.value} value={currency.value}>
                                   {currency.label}
                                 </SelectItem>
@@ -511,6 +508,25 @@ const SettingsPage: React.FC = () => {
                   </div>
 
                   <Separator />
+
+                  <div className="space-y-4">
+                    <Label>Default Currency</Label>
+                    <Select
+                      value={userSettings.defaultCurrency}
+                      onValueChange={(value) => handleNotificationChange('defaultCurrency', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUPPORTED_CURRENCIES.map((currency) => (
+                          <SelectItem key={currency.value} value={currency.value}>
+                            {currency.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   <div className="space-y-4">
                     <Label>Theme Preference</Label>

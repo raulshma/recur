@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BarChart, DonutChart } from '@/components/ui/chart';
+import { formatCurrency } from '../lib/utils';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -67,7 +68,7 @@ const DashboardPage: React.FC = () => {
   const stats = dashboardStats ? [
     {
       title: 'Monthly Cost',
-      value: `$${dashboardStats.totalMonthlyCost.toFixed(2)}`,
+      value: formatCurrency(dashboardStats.totalMonthlyCost, user?.currency || 'USD'),
       change: { value: 0, type: 'neutral' as const, period: 'from last month' },
       icon: <CurrencyDollarIcon className="h-6 w-6" />,
     },
@@ -248,7 +249,7 @@ const DashboardPage: React.FC = () => {
                           />
                           <span className="text-sm font-medium">{category.name}</span>
                         </div>
-                        <span className="text-sm text-gray-600">${category.value.toFixed(2)}</span>
+                        <span className="text-sm text-gray-600">{formatCurrency(category.value, user?.currency || 'USD')}</span>
                       </div>
                     ))}
                   </div>
@@ -295,7 +296,7 @@ const DashboardPage: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="warning">${bill.amount.toFixed(2)}</Badge>
+                      <Badge variant="warning">{formatCurrency(bill.amount, user?.currency || 'USD')}</Badge>
                     </div>
                   ))}
                 </div>
@@ -340,7 +341,7 @@ const DashboardPage: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-3">
                   {dashboardStats?.activeSubscriptions === 0 
                     ? "Add your first subscription to start getting insights about your spending patterns."
-                    : `You have ${dashboardStats?.activeSubscriptions} active subscriptions costing $${dashboardStats?.totalMonthlyCost.toFixed(2)} per month.`
+                    : `You have ${dashboardStats?.activeSubscriptions} active subscriptions costing ${formatCurrency(dashboardStats?.totalMonthlyCost || 0, user?.currency || 'USD')} per month.`
                   }
                 </p>
                 <Button variant="link" className="p-0 h-auto text-orange-600">

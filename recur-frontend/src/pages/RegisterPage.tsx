@@ -165,6 +165,8 @@ const RegisterPage: React.FC = () => {
                 <option value="GBP">GBP - British Pound</option>
                 <option value="CAD">CAD - Canadian Dollar</option>
                 <option value="AUD">AUD - Australian Dollar</option>
+                <option value="JPY">JPY - Japanese Yen</option>
+                <option value="INR">INR - Indian Rupee</option>
               </select>
             </div>
           </div>

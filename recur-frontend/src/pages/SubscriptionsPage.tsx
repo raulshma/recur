@@ -47,8 +47,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptionsApi } from '../api/subscriptions';
 import { categoriesApi } from '../api/categories';
 import type { Subscription, CreateSubscriptionRequest, SubscriptionFilters } from '../types';
+import { formatCurrency, SUPPORTED_CURRENCIES } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 const SubscriptionsPage: React.FC = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -115,7 +118,7 @@ const SubscriptionsPage: React.FC = () => {
       categoryId: '',
       description: '',
       website: '',
-      currency: 'USD',
+      currency: user?.currency || 'USD',
       isTrial: false,
     },
   });
@@ -175,7 +178,7 @@ const SubscriptionsPage: React.FC = () => {
       sortable: true,
       render: (value: number, row: Subscription) => (
         <div>
-          <div className="font-medium">${value.toFixed(2)}</div>
+          <div className="font-medium">{formatCurrency(value, row.currency)}</div>
           <div className="text-sm text-gray-500">{getBillingCycleText(row.billingCycle)}</div>
         </div>
       ),
@@ -332,7 +335,7 @@ const SubscriptionsPage: React.FC = () => {
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <FormField
                       control={form.control}
                       name="name"
@@ -355,6 +358,30 @@ const SubscriptionsPage: React.FC = () => {
                           <FormControl>
                             <Input type="number" step="0.01" placeholder="9.99" {...field} />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="currency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Currency</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select currency" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {SUPPORTED_CURRENCIES.map((currency) => (
+                                <SelectItem key={currency.value} value={currency.value}>
+                                  {currency.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
