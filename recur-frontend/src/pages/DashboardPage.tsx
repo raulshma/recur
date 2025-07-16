@@ -17,10 +17,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatsCard } from '@/components/ui/stats-card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+
 import { EmptyState } from '@/components/ui/empty-state';
 import { BarChart, DonutChart } from '@/components/ui/chart';
 import { formatCurrency } from '../lib/utils';
+import { CurrencyDisplay } from '@/components/ui/currency-display';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -75,7 +76,25 @@ const DashboardPage: React.FC = () => {
   const stats = dashboardStats ? [
     {
       title: 'Monthly Cost',
-      value: formatCurrency(dashboardStats.totalMonthlyCost, userCurrency),
+      value: (
+        <CurrencyDisplay
+          amount={dashboardStats.totalMonthlyCost}
+          currency={dashboardStats.displayCurrency || userCurrency}
+          showTooltip={(dashboardStats.currencyBreakdowns?.length || 0) > 1}
+          tooltipContent={(dashboardStats.currencyBreakdowns?.length || 0) > 1 ? (
+            <div className="space-y-1">
+              <div className="font-semibold">Currency Breakdown:</div>
+              {dashboardStats.currencyBreakdowns?.map((breakdown, idx) => (
+                <div key={idx} className="text-sm">
+                  {breakdown.currency}: {formatCurrency(breakdown.originalAmount, breakdown.currency)} 
+                  ({breakdown.subscriptionCount} subscription{breakdown.subscriptionCount !== 1 ? 's' : ''})
+                </div>
+              ))}
+            </div>
+          ) : undefined}
+          size="lg"
+        />
+      ),
       change: { value: 0, type: 'neutral' as const, period: 'from last month' },
       icon: <CurrencyDollarIcon className="h-6 w-6" />,
     },
@@ -157,15 +176,60 @@ const DashboardPage: React.FC = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        {stats.map((stat, index) => (
-          <StatsCard
-            key={index}
-            title={stat.title}
-            value={stat.value}
-            change={stat.change}
-            icon={stat.icon}
-          />
-        ))}
+        {stats.map((stat, index) => {
+          // Special handling for Monthly Cost card with currency display
+          if (stat.title === 'Monthly Cost' && dashboardStats) {
+            return (
+              <Card key={index}>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                      <div className="text-3xl font-bold text-gray-900 mt-2">
+                        <CurrencyDisplay
+                          amount={dashboardStats.totalMonthlyCost}
+                          currency={dashboardStats.displayCurrency || userCurrency}
+                          showTooltip={(dashboardStats.currencyBreakdowns?.length || 0) > 1}
+                          tooltipContent={(dashboardStats.currencyBreakdowns?.length || 0) > 1 ? (
+                            <div className="space-y-1">
+                              <div className="font-semibold">Currency Breakdown:</div>
+                              {dashboardStats.currencyBreakdowns?.map((breakdown, idx) => (
+                                <div key={idx} className="text-sm">
+                                  {breakdown.currency}: {formatCurrency(breakdown.originalAmount, breakdown.currency)} 
+                                  ({breakdown.subscriptionCount} subscription{breakdown.subscriptionCount !== 1 ? 's' : ''})
+                                </div>
+                              ))}
+                            </div>
+                          ) : undefined}
+                          size="xl"
+                        />
+                      </div>
+                      {stat.change && (
+                        <div className="flex items-center mt-2 space-x-1">
+                          <span className="text-sm font-medium text-gray-600">
+                            {stat.change.period}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {stat.icon && <div className="text-gray-400">{stat.icon}</div>}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          }
+          
+          // Regular stats cards for other metrics
+          return (
+            <StatsCard
+              key={index}
+              title={stat.title}
+              value={typeof stat.value === 'string' ? stat.value : stat.value.toString()}
+              change={stat.change}
+              icon={stat.icon}
+            />
+          );
+        })}
       </div>
 
       {/* Main Content Grid */}
@@ -184,7 +248,12 @@ const DashboardPage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <BarChart data={monthlySpendingData} height={300} showValues />
+              <BarChart 
+                data={monthlySpendingData} 
+                height={300} 
+                showValues 
+                currency={dashboardStats?.displayCurrency || userCurrency}
+              />
             </CardContent>
           </Card>
 
@@ -234,6 +303,66 @@ const DashboardPage: React.FC = () => {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Currency Breakdown */}
+          {dashboardStats?.currencyBreakdowns && dashboardStats.currencyBreakdowns.length > 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Currency Breakdown</CardTitle>
+                <CardDescription>
+                  Your subscriptions by original currency
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {dashboardStats.currencyBreakdowns.map((breakdown, index) => {
+                    const percentage = dashboardStats.totalMonthlyCost > 0 
+                      ? (breakdown.convertedAmount / dashboardStats.totalMonthlyCost) * 100 
+                      : 0;
+                    
+                    return (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-blue-500" />
+                            <span className="font-medium">{breakdown.currency}</span>
+                            <span className="text-gray-500">
+                              ({breakdown.subscriptionCount} subscription{breakdown.subscriptionCount !== 1 ? 's' : ''})
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-medium">
+                              <CurrencyDisplay
+                                amount={breakdown.convertedAmount}
+                                currency={dashboardStats.displayCurrency}
+                                showTooltip={true}
+                                tooltipContent={
+                                  breakdown.currency !== dashboardStats.displayCurrency ? (
+                                    <div>
+                                      <div>Original: {formatCurrency(breakdown.originalAmount, breakdown.currency)}</div>
+                                      <div>Converted: {formatCurrency(breakdown.convertedAmount, dashboardStats.displayCurrency)}</div>
+                                    </div>
+                                  ) : undefined
+                                }
+                                size="sm"
+                              />
+                            </div>
+                            <div className="text-xs text-gray-500">{percentage.toFixed(1)}%</div>
+                          </div>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Category Breakdown */}
           <Card>
             <CardHeader>
@@ -256,7 +385,16 @@ const DashboardPage: React.FC = () => {
                           />
                           <span className="text-sm font-medium">{category.name}</span>
                         </div>
-                        <span className="text-sm text-gray-600">{formatCurrency(category.value, userCurrency)}</span>
+                        <span className="text-sm text-gray-600">
+                          <CurrencyDisplay
+                            amount={category.value}
+                            currency={dashboardStats?.displayCurrency || userCurrency}
+                            displayOptions={{ compact: true }}
+                            showTooltip={false}
+                            showStaleIndicator={false}
+                            size="sm"
+                          />
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -289,23 +427,45 @@ const DashboardPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {upcomingBills.map((bill) => (
-                    <div key={bill.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div 
-                          className="w-3 h-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: bill.categoryColor }}
-                        />
-                        <div>
-                          <p className="font-medium">{bill.name}</p>
-                          <p className="text-sm text-gray-600">
-                            {new Date(bill.date).toLocaleDateString()} - {bill.categoryName}
-                          </p>
+                  {upcomingBills.map((bill) => {
+                    // Create converted amount object if conversion data is available
+                    const convertedAmount = bill.isConverted && bill.convertedAmount && bill.convertedCurrency ? {
+                      originalAmount: bill.amount,
+                      originalCurrency: bill.currency,
+                      convertedAmount: bill.convertedAmount,
+                      convertedCurrency: bill.convertedCurrency,
+                      exchangeRate: bill.convertedAmount / bill.amount, // Calculate rate from amounts
+                      isStale: false, // Assume fresh for upcoming bills
+                      timestamp: new Date()
+                    } : undefined;
+
+                    return (
+                      <div key={bill.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: bill.categoryColor }}
+                          />
+                          <div>
+                            <p className="font-medium">{bill.name}</p>
+                            <p className="text-sm text-gray-600">
+                              {new Date(bill.date).toLocaleDateString()} - {bill.categoryName}
+                            </p>
+                          </div>
                         </div>
+                        <Badge variant="warning">
+                          <CurrencyDisplay
+                            amount={bill.amount}
+                            currency={bill.currency}
+                            convertedAmount={convertedAmount}
+                            displayOptions={{ compact: true }}
+                            showTooltip={false}
+                            showStaleIndicator={false}
+                          />
+                        </Badge>
                       </div>
-                      <Badge variant="warning">{formatCurrency(bill.amount, userCurrency)}</Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -332,12 +492,62 @@ const DashboardPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Insights */}
+          {/* Budget Comparison & Insights */}
           <Card>
             <CardHeader>
-              <CardTitle>Insights</CardTitle>
+              <CardTitle>Budget & Insights</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* Budget Comparison */}
+              {user?.budgetLimit && user.budgetLimit > 0 && dashboardStats && (
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-medium text-gray-900 mb-2">Monthly Budget</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Spent</span>
+                      <CurrencyDisplay
+                        amount={dashboardStats.totalMonthlyCost}
+                        currency={dashboardStats.displayCurrency || userCurrency}
+                        size="sm"
+                        showTooltip={false}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Budget</span>
+                      <span className="text-sm font-medium">
+                        {formatCurrency(user.budgetLimit, userCurrency)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          (dashboardStats.totalMonthlyCost / user.budgetLimit) * 100 >= 90 
+                            ? 'bg-red-500' 
+                            : (dashboardStats.totalMonthlyCost / user.budgetLimit) * 100 >= 75 
+                            ? 'bg-orange-500' 
+                            : 'bg-green-500'
+                        }`}
+                        style={{ 
+                          width: `${Math.min(100, (dashboardStats.totalMonthlyCost / user.budgetLimit) * 100)}%` 
+                        }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-gray-500">
+                      <span>
+                        {((dashboardStats.totalMonthlyCost / user.budgetLimit) * 100).toFixed(1)}% used
+                      </span>
+                      <span>
+                        {dashboardStats.totalMonthlyCost <= user.budgetLimit 
+                          ? `${formatCurrency(user.budgetLimit - dashboardStats.totalMonthlyCost, userCurrency)} remaining`
+                          : `${formatCurrency(dashboardStats.totalMonthlyCost - user.budgetLimit, userCurrency)} over budget`
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* General Insights */}
               <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
                 <h4 className="font-medium text-gray-900 mb-2">
                   {dashboardStats?.activeSubscriptions === 0 
@@ -348,7 +558,28 @@ const DashboardPage: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-3">
                   {dashboardStats?.activeSubscriptions === 0 
                     ? "Add your first subscription to start getting insights about your spending patterns."
-                    : `You have ${dashboardStats?.activeSubscriptions} active subscriptions costing ${formatCurrency(dashboardStats?.totalMonthlyCost || 0, userCurrency)} per month.`
+                    : (
+                        <span>
+                          You have {dashboardStats?.activeSubscriptions} active subscriptions costing{' '}
+                          <CurrencyDisplay
+                            amount={dashboardStats?.totalMonthlyCost || 0}
+                            currency={dashboardStats?.displayCurrency || userCurrency}
+                            showTooltip={dashboardStats?.currencyBreakdowns?.length > 1}
+                            tooltipContent={dashboardStats?.currencyBreakdowns?.length > 1 ? (
+                              <div className="space-y-1">
+                                <div className="font-semibold">Original currencies:</div>
+                                {dashboardStats.currencyBreakdowns?.map((breakdown, idx) => (
+                                  <div key={idx} className="text-sm">
+                                    {formatCurrency(breakdown.originalAmount, breakdown.currency)}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : undefined}
+                            size="sm"
+                          />{' '}
+                          per month.
+                        </span>
+                      )
                   }
                 </p>
                 <Button variant="link" className="p-0 h-auto text-orange-600">

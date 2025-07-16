@@ -14,6 +14,7 @@ public class RecurDbContext : IdentityDbContext<User>
     public DbSet<Category> Categories { get; set; }
     public DbSet<Alert> Alerts { get; set; }
     public DbSet<UserSettings> UserSettings { get; set; }
+    public DbSet<ExchangeRate> ExchangeRates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -103,6 +104,20 @@ public class RecurDbContext : IdentityDbContext<User>
             entity.Property(s => s.CreatedAt)
                   .HasDefaultValueSql("GETUTCDATE()");
             entity.Property(s => s.UpdatedAt)
+                  .HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        // Configure ExchangeRate properties
+        builder.Entity<ExchangeRate>(entity =>
+        {
+            entity.Property(e => e.Rate)
+                  .HasPrecision(18, 8);
+
+            entity.HasIndex(e => new { e.FromCurrency, e.ToCurrency, e.ExpiresAt })
+                  .HasDatabaseName("IX_ExchangeRate_Currencies_Expiry");
+
+            // Configure DateTime properties with database defaults
+            entity.Property(e => e.Timestamp)
                   .HasDefaultValueSql("GETUTCDATE()");
         });
 

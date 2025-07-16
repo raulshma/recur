@@ -70,6 +70,37 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Configure Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("CurrencyApi", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 100; // 100 requests
+        limiterOptions.Window = TimeSpan.FromMinutes(1); // per minute
+        limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 10; // Allow 10 requests to queue
+    });
+    
+    options.AddFixedWindowLimiter("CurrencyConversion", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 50; // 50 conversions
+        limiterOptions.Window = TimeSpan.FromMinutes(1); // per minute
+        limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 5; // Allow 5 requests to queue
+    });
+    
+    options.RejectionStatusCode = 429; // Too Many Requests
+});
+
+// Configure Currency Services
+builder.Services.AddHttpClient<RecurApi.Services.ExchangeRateApiProvider>();
+builder.Services.AddScoped<RecurApi.Services.IExchangeRateProvider, RecurApi.Services.ExchangeRateApiProvider>();
+builder.Services.AddScoped<RecurApi.Services.ICurrencyConversionService, RecurApi.Services.CurrencyConversionService>();
+builder.Services.AddMemoryCache();
+
+// Register background service for exchange rate updates
+builder.Services.AddHostedService<RecurApi.Services.ExchangeRateBackgroundService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -81,6 +112,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

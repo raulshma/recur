@@ -8,6 +8,17 @@ export interface DashboardStats {
   upcomingBills: number;
   trialEnding: number;
   daysUntilNextBilling: number;
+  
+  // Currency-aware properties
+  displayCurrency: string;
+  currencyBreakdowns: CurrencyBreakdown[];
+}
+
+export interface CurrencyBreakdown {
+  currency: string;
+  originalAmount: number;
+  convertedAmount: number;
+  subscriptionCount: number;
 }
 
 export interface Notification {
@@ -38,6 +49,11 @@ export interface UpcomingBill {
   date: string;
   categoryName: string;
   categoryColor: string;
+  
+  // Currency conversion properties
+  convertedAmount?: number;
+  convertedCurrency?: string;
+  isConverted: boolean;
 }
 
 export interface RecentActivity {

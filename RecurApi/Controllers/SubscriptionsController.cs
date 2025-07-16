@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using RecurApi.Data;
 using RecurApi.DTOs;
 using RecurApi.Models;
+using RecurApi.Services;
 using System.Security.Claims;
 
 namespace RecurApi.Controllers;
@@ -16,11 +17,13 @@ public class SubscriptionsController : ControllerBase
 {
     private readonly RecurDbContext _context;
     private readonly UserManager<User> _userManager;
+    private readonly ICurrencyConversionService _currencyService;
 
-    public SubscriptionsController(RecurDbContext context, UserManager<User> userManager)
+    public SubscriptionsController(RecurDbContext context, UserManager<User> userManager, ICurrencyConversionService currencyService)
     {
         _context = context;
         _userManager = userManager;
+        _currencyService = currencyService;
     }
 
     [HttpGet]
@@ -28,7 +31,8 @@ public class SubscriptionsController : ControllerBase
         [FromQuery] int? categoryId,
         [FromQuery] bool? isActive,
         [FromQuery] bool? isTrial,
-        [FromQuery] string? search)
+        [FromQuery] string? search,
+        [FromQuery] string? convertToCurrency)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         
@@ -59,14 +63,29 @@ public class SubscriptionsController : ControllerBase
 
         var subscriptions = await query
             .OrderBy(s => s.Name)
-            .Select(s => MapToSubscriptionDto(s))
             .ToListAsync();
 
-        return Ok(subscriptions);
+        // Get user's preferred currency if not specified
+        var targetCurrency = convertToCurrency;
+        if (string.IsNullOrWhiteSpace(targetCurrency))
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            targetCurrency = user?.Currency ?? "USD";
+        }
+
+        var subscriptionDtos = new List<SubscriptionDto>();
+        
+        foreach (var subscription in subscriptions)
+        {
+            var dto = await MapToSubscriptionDtoAsync(subscription, targetCurrency);
+            subscriptionDtos.Add(dto);
+        }
+
+        return Ok(subscriptionDtos);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<SubscriptionDto>> GetSubscription(int id)
+    public async Task<ActionResult<SubscriptionDto>> GetSubscription(int id, [FromQuery] string? convertToCurrency)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         
@@ -79,7 +98,16 @@ public class SubscriptionsController : ControllerBase
             return NotFound();
         }
 
-        return Ok(MapToSubscriptionDto(subscription));
+        // Get user's preferred currency if not specified
+        var targetCurrency = convertToCurrency;
+        if (string.IsNullOrWhiteSpace(targetCurrency))
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            targetCurrency = user?.Currency ?? "USD";
+        }
+
+        var dto = await MapToSubscriptionDtoAsync(subscription, targetCurrency);
+        return Ok(dto);
     }
 
     [HttpPost]
@@ -121,7 +149,8 @@ public class SubscriptionsController : ControllerBase
             .Reference(s => s.Category)
             .LoadAsync();
 
-        return CreatedAtAction(nameof(GetSubscription), new { id = subscription.Id }, MapToSubscriptionDto(subscription));
+        var dto = await MapToSubscriptionDtoAsync(subscription, subscription.Currency);
+        return CreatedAtAction(nameof(GetSubscription), new { id = subscription.Id }, dto);
     }
 
     [HttpPut("{id}")]
@@ -259,6 +288,72 @@ public class SubscriptionsController : ControllerBase
                 CreatedAt = subscription.Category.CreatedAt
             }
         };
+    }
+
+    private async Task<SubscriptionDto> MapToSubscriptionDtoAsync(Subscription subscription, string targetCurrency)
+    {
+        var dto = new SubscriptionDto
+        {
+            Id = subscription.Id,
+            Name = subscription.Name,
+            Description = subscription.Description,
+            Cost = subscription.Cost,
+            Currency = subscription.Currency,
+            BillingCycle = subscription.BillingCycle,
+            BillingCycleText = GetBillingCycleText(subscription.BillingCycle),
+            NextBillingDate = subscription.NextBillingDate,
+            TrialEndDate = subscription.TrialEndDate,
+            CancellationDate = subscription.CancellationDate,
+            Website = subscription.Website,
+            ContactEmail = subscription.ContactEmail,
+            Notes = subscription.Notes,
+            IsActive = subscription.IsActive,
+            IsTrial = subscription.IsTrial,
+            DaysUntilNextBilling = (subscription.NextBillingDate.Date - DateTime.UtcNow.Date).Days,
+            CreatedAt = subscription.CreatedAt,
+            UpdatedAt = subscription.UpdatedAt,
+            Category = new CategoryDto
+            {
+                Id = subscription.Category.Id,
+                Name = subscription.Category.Name,
+                Description = subscription.Category.Description,
+                Color = subscription.Category.Color,
+                IsDefault = subscription.Category.IsDefault,
+                CreatedAt = subscription.Category.CreatedAt
+            }
+        };
+
+        // Handle currency conversion if needed
+        if (!string.IsNullOrWhiteSpace(targetCurrency) && 
+            !string.Equals(subscription.Currency, targetCurrency, StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var conversionResult = await _currencyService.ConvertWithMetadataAsync(
+                    subscription.Cost, 
+                    subscription.Currency, 
+                    targetCurrency);
+
+                dto.ConvertedCost = conversionResult.ConvertedAmount;
+                dto.ConvertedCurrency = targetCurrency;
+                dto.ExchangeRate = conversionResult.ExchangeRate;
+                dto.RateTimestamp = conversionResult.RateTimestamp;
+                dto.IsConverted = true;
+                dto.IsRateStale = conversionResult.IsStale;
+            }
+            catch
+            {
+                // If conversion fails, keep original values and mark as not converted
+                dto.IsConverted = false;
+            }
+        }
+        else
+        {
+            // No conversion needed
+            dto.IsConverted = false;
+        }
+
+        return dto;
     }
 
     private static string GetBillingCycleText(BillingCycle cycle)

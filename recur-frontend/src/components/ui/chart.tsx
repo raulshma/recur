@@ -2,11 +2,13 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 
 interface ChartData {
   name: string
   value: number
   color?: string
+  currency?: string
 }
 
 interface BarChartProps {
@@ -14,10 +16,11 @@ interface BarChartProps {
   className?: string
   height?: number
   showValues?: boolean
+  currency?: string
 }
 
 const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
-  ({ data, className, height = 200, showValues = false, ...props }, ref) => {
+  ({ data, className, height = 200, showValues = false, currency, ...props }, ref) => {
     const maxValue = Math.max(...data.map((item) => item.value))
 
     return (
@@ -34,11 +37,18 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           {data.map((item, index) => {
             const barHeight = (item.value / maxValue) * (height - 80)
             const color = item.color || "#FF6B35"
+            const displayValue = showValues ? (
+              currency ? formatCurrency(item.value, currency) : item.value.toString()
+            ) : null
 
             return (
               <div key={index} className="flex flex-col items-center gap-2 flex-1">
                 <div className="flex flex-col items-center">
-                  {showValues && <span className="text-xs font-bold text-gray-700 mb-1">{item.value}</span>}
+                  {showValues && (
+                    <span className="text-xs font-bold text-gray-700 mb-1">
+                      {displayValue}
+                    </span>
+                  )}
                   <div
                     className="w-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px]"
                     style={{

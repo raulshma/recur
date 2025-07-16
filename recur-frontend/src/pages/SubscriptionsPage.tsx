@@ -7,8 +7,6 @@ import {
   PencilIcon,
   TrashIcon,
   EyeIcon,
-  CalendarDaysIcon,
-  CurrencyDollarIcon,
   TagIcon,
   CheckCircleIcon,
   XCircleIcon,
@@ -16,11 +14,11 @@ import {
   RectangleStackIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataTable } from '@/components/ui/data-table';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
@@ -46,9 +44,10 @@ import * as z from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptionsApi } from '../api/subscriptions';
 import { categoriesApi } from '../api/categories';
-import type { Subscription, CreateSubscriptionRequest, SubscriptionFilters } from '../types';
-import { formatCurrency, SUPPORTED_CURRENCIES } from '../lib/utils';
+import type { Subscription, CreateSubscriptionRequest, BillingCycle } from '../types';
+import { SUPPORTED_CURRENCIES } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
+import { CurrencyDisplay } from '@/components/ui/currency-display';
 
 const SubscriptionsPage: React.FC = () => {
   const { user } = useAuth();
@@ -61,13 +60,13 @@ const SubscriptionsPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch subscriptions from API
-  const { data: subscriptions = [], isLoading: subscriptionsLoading, error: subscriptionsError } = useQuery({
+  const { data: subscriptions = [] } = useQuery({
     queryKey: ['subscriptions'],
     queryFn: () => subscriptionsApi.getSubscriptions(),
   });
 
   // Fetch categories from API
-  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: () => categoriesApi.getCategories(),
   });
@@ -178,10 +177,27 @@ const SubscriptionsPage: React.FC = () => {
       header: 'Cost',
       sortable: true,
       render: (value: number, row: Subscription) => {
-        console.log(`Formatting subscription ${row.name}: ${value} ${row.currency}`);
+        // Create converted amount object if conversion data is available
+        const convertedAmount = row.isConverted && row.convertedCost && row.convertedCurrency && row.exchangeRate && row.rateTimestamp ? {
+          originalAmount: value,
+          originalCurrency: row.currency,
+          convertedAmount: row.convertedCost,
+          convertedCurrency: row.convertedCurrency,
+          exchangeRate: row.exchangeRate,
+          isStale: row.isRateStale,
+          timestamp: new Date(row.rateTimestamp)
+        } : undefined;
+
         return (
           <div>
-            <div className="font-medium">{formatCurrency(value, row.currency)}</div>
+            <CurrencyDisplay
+              amount={value}
+              currency={row.currency}
+              convertedAmount={convertedAmount}
+              displayOptions={{ compact: true }}
+              className="font-medium"
+              showStaleIndicator={true}
+            />
             <div className="text-sm text-gray-500">{getBillingCycleText(row.billingCycle)}</div>
           </div>
         );
@@ -202,7 +218,7 @@ const SubscriptionsPage: React.FC = () => {
       key: 'nextBillingDate' as keyof Subscription,
       header: 'Next Bill',
       sortable: true,
-      render: (value: string, row: Subscription) => (
+      render: (value: string) => (
         <div>
           <div className="font-medium">{new Date(value).toLocaleDateString()}</div>
           <div className="text-sm text-gray-500">{getDaysUntilBilling(value)}</div>
@@ -212,12 +228,12 @@ const SubscriptionsPage: React.FC = () => {
     {
       key: 'isActive' as keyof Subscription,
       header: 'Status',
-      render: (value: boolean, row: Subscription) => getStatusBadge(row),
+      render: (_value: boolean, row: Subscription) => getStatusBadge(row),
     },
     {
       key: 'id' as keyof Subscription,
       header: 'Actions',
-      render: (value: number, row: Subscription) => (
+      render: (value: number, _row: Subscription) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm">
@@ -262,7 +278,7 @@ const SubscriptionsPage: React.FC = () => {
         description: data.description || undefined,
         cost: Number(data.cost),
         currency: data.currency,
-        billingCycle: Number(data.billingCycle),
+        billingCycle: Number(data.billingCycle) as BillingCycle,
         nextBillingDate: data.nextBillingDate,
         website: data.website || undefined,
         categoryId: Number(data.categoryId),

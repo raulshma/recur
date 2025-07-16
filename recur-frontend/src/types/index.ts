@@ -86,6 +86,14 @@ export interface Subscription {
   createdAt: string;
   updatedAt: string;
   category: Category;
+  
+  // Currency conversion properties
+  convertedCost?: number;
+  convertedCurrency?: string;
+  exchangeRate?: number;
+  rateTimestamp?: string;
+  isConverted: boolean;
+  isRateStale: boolean;
 }
 
 // Category Types
@@ -128,5 +136,39 @@ export interface DashboardStats {
   totalAnnualCost: number;
   upcomingBills: number;
   trialEnding: number;
+}
+
+// Currency Conversion Types
+export interface ConvertedAmount {
+  originalAmount: number;
+  originalCurrency: string;
+  convertedAmount: number;
+  convertedCurrency: string;
+  exchangeRate: number;
+  isStale: boolean;
+  timestamp: Date;
+}
+
+export interface CurrencyDisplayOptions {
+  showOriginal?: boolean;
+  showConversionRate?: boolean;
+  showTimestamp?: boolean;
+  compact?: boolean;
+}
+
+export interface CurrencyConversionResult {
+  convertedAmount: number;
+  exchangeRate: number;
+  rateTimestamp: string;
+  isStale: boolean;
+  fromCurrency: string;
+  toCurrency: string;
+}
+
+export interface ExchangeRatesResponse {
+  baseCurrency: string;
+  rates: Record<string, number>;
+  timestamp: string;
+  success: boolean;
 } 
 
