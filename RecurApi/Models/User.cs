@@ -8,6 +8,7 @@ public class User : IdentityUser
     public string? LastName { get; set; }
     public string? TimeZone { get; set; } = "UTC";
     public string Currency { get; set; } = "USD";
+    public decimal? BudgetLimit { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
     

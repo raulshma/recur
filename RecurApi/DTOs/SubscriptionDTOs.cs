@@ -146,4 +146,25 @@ public class UpdateCategoryDto
     [MaxLength(7)]
     [RegularExpression(@"^#[0-9A-Fa-f]{6}$", ErrorMessage = "Color must be a valid hex color code")]
     public string Color { get; set; } = "#007bff";
+}
+
+public class DashboardStatsDto
+{
+    public int TotalSubscriptions { get; set; }
+    public int ActiveSubscriptions { get; set; }
+    public decimal TotalMonthlyCost { get; set; }
+    public decimal TotalAnnualCost { get; set; }
+    public int UpcomingBills { get; set; }
+    public int TrialEnding { get; set; }
+    public int DaysUntilNextBilling { get; set; }
+}
+
+public class NotificationDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // "renewal", "trial", "budget", "info"
+    public string Title { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public bool IsRead { get; set; }
 } 

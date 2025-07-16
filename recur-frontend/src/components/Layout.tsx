@@ -37,6 +37,9 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useAuth } from '../context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardApi } from '../api/dashboard';
+import { subscriptionsApi } from '../api/subscriptions';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -48,6 +51,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Fetch dashboard stats
+  const { data: dashboardStats } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => dashboardApi.getStats(),
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  });
+
+  // Fetch notifications
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => dashboardApi.getNotifications(),
+    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
+  });
 
   const navigation = [
     {
@@ -61,7 +79,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       href: '/subscriptions',
       icon: RectangleStackIcon,
       current: location.pathname === '/subscriptions',
-      badge: '14', // Mock count - would come from API
+      badge: dashboardStats?.activeSubscriptions?.toString() || '0',
     },
     {
       name: 'Analytics',
@@ -112,6 +130,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Input
             placeholder="Search subscriptions..."
             className="pl-10 h-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchTerm.trim()) {
+                navigate(`/subscriptions?search=${encodeURIComponent(searchTerm.trim())}`);
+                setSearchTerm('');
+              }
+            }}
           />
         </div>
       </div>
@@ -149,15 +175,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Monthly Spend</span>
-              <span className="text-sm font-medium">$237.29</span>
+              <span className="text-sm font-medium">
+                ${dashboardStats?.totalMonthlyCost?.toFixed(2) || '0.00'}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Active</span>
-              <span className="text-sm font-medium">14 services</span>
+              <span className="text-sm font-medium">
+                {dashboardStats?.activeSubscriptions || 0} services
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Next Bill</span>
-              <span className="text-sm font-medium">3 days</span>
+              <span className="text-sm font-medium">
+                {dashboardStats?.daysUntilNextBilling 
+                  ? `${dashboardStats.daysUntilNextBilling} days`
+                  : 'None scheduled'
+                }
+              </span>
             </div>
           </div>
         </Card>
@@ -251,35 +286,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="relative">
                   <BellIcon className="h-5 w-5" />
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    3
-                  </Badge>
+                  {notifications.length > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    >
+                      {notifications.length}
+                    </Badge>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
                 <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium">Netflix renewal in 3 days</p>
-                    <p className="text-xs text-gray-500">$19.99 will be charged</p>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium">Spotify trial ending soon</p>
-                    <p className="text-xs text-gray-500">Free trial ends in 5 days</p>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium">Monthly budget alert</p>
-                    <p className="text-xs text-gray-500">You've spent 80% of your budget</p>
-                  </div>
-                </DropdownMenuItem>
+                {notifications.length === 0 ? (
+                  <DropdownMenuItem disabled>
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-500">No new notifications</p>
+                    </div>
+                  </DropdownMenuItem>
+                ) : (
+                  notifications.slice(0, 5).map((notification) => (
+                    <DropdownMenuItem key={notification.id}>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-sm font-medium">{notification.title}</p>
+                        <p className="text-xs text-gray-500">{notification.message}</p>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                )}
+                {notifications.length > 5 && (
+                  <DropdownMenuItem onClick={() => navigate('/notifications')}>
+                    <div className="text-center w-full">
+                      <p className="text-sm text-blue-600">View all notifications</p>
+                    </div>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
