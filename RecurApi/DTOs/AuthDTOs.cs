@@ -60,6 +60,7 @@ public class UserDto
     public string? LastName { get; set; }
     public string? TimeZone { get; set; }
     public string Currency { get; set; } = string.Empty;
+    public decimal? BudgetLimit { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
 }
@@ -76,4 +77,69 @@ public class ChangePasswordDto
     [Required]
     [Compare(nameof(NewPassword))]
     public string ConfirmNewPassword { get; set; } = string.Empty;
+}
+
+public class UpdateProfileDto
+{
+    [Required]
+    [MaxLength(50)]
+    public string FirstName { get; set; } = string.Empty;
+    
+    [Required]
+    [MaxLength(50)]
+    public string LastName { get; set; } = string.Empty;
+    
+    [MaxLength(50)]
+    public string? TimeZone { get; set; }
+    
+    [MaxLength(3)]
+    public string Currency { get; set; } = "USD";
+    
+    [Range(0, 999999.99)]
+    public decimal? BudgetLimit { get; set; }
+}
+
+public class UserSettingsDto
+{
+    public bool EmailNotifications { get; set; } = true;
+    public bool TrialEndingAlerts { get; set; } = true;
+    public bool BillingReminders { get; set; } = true;
+    public bool PriceChangeAlerts { get; set; } = true;
+    public bool RecommendationAlerts { get; set; } = true;
+    public int TrialEndingReminderDays { get; set; } = 3;
+    public int BillingReminderDays { get; set; } = 2;
+    public string DefaultCurrency { get; set; } = "USD";
+    public string DateFormat { get; set; } = "MM/dd/yyyy";
+    public string TimeZone { get; set; } = "UTC";
+    public string Theme { get; set; } = "light";
+    public string? DashboardLayout { get; set; }
+}
+
+public class UpdateUserSettingsDto
+{
+    public bool EmailNotifications { get; set; } = true;
+    public bool TrialEndingAlerts { get; set; } = true;
+    public bool BillingReminders { get; set; } = true;
+    public bool PriceChangeAlerts { get; set; } = true;
+    public bool RecommendationAlerts { get; set; } = true;
+    
+    [Range(1, 30)]
+    public int TrialEndingReminderDays { get; set; } = 3;
+    
+    [Range(1, 30)]
+    public int BillingReminderDays { get; set; } = 2;
+    
+    [MaxLength(3)]
+    public string DefaultCurrency { get; set; } = "USD";
+    
+    [MaxLength(20)]
+    public string DateFormat { get; set; } = "MM/dd/yyyy";
+    
+    [MaxLength(50)]
+    public string TimeZone { get; set; } = "UTC";
+    
+    [MaxLength(10)]
+    public string Theme { get; set; } = "light";
+    
+    public string? DashboardLayout { get; set; }
 } 

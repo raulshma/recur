@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UserIcon,
   BellIcon,
@@ -13,6 +13,7 @@ import {
   Cog6ToothIcon,
   EyeIcon,
   EyeSlashIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,36 +45,27 @@ import {
 } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
+import { authApi } from '../api/auth';
+import { settingsApi, type UserSettings, type UpdateProfileRequest, type UpdateUserSettingsRequest } from '../api/settings';
 
 const SettingsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [showPassword, setShowPassword] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
   // Form for profile settings
-  const profileForm = useForm({
+  const profileForm = useForm<UpdateProfileRequest>({
     defaultValues: {
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
-      email: user?.email || '',
       timeZone: user?.timeZone || 'UTC',
       currency: user?.currency || 'USD',
-      bio: '',
+      budgetLimit: user?.budgetLimit || undefined,
     },
-  });
-
-  // Form for notification settings
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    pushNotifications: true,
-    weeklyReports: true,
-    monthlyReports: true,
-    renewalReminders: true,
-    trialExpirations: true,
-    costAlerts: true,
-    newFeatures: false,
-    marketing: false,
   });
 
   // Form for security settings
@@ -81,18 +73,38 @@ const SettingsPage: React.FC = () => {
     defaultValues: {
       currentPassword: '',
       newPassword: '',
-      confirmPassword: '',
+      confirmNewPassword: '',
     },
   });
 
-  // Form for billing settings
-  const billingForm = useForm({
-    defaultValues: {
-      defaultCurrency: 'USD',
-      budgetLimit: '',
-      budgetPeriod: 'monthly',
-    },
-  });
+  useEffect(() => {
+    // Update form when user data changes
+    if (user) {
+      profileForm.reset({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        timeZone: user.timeZone || 'UTC',
+        currency: user.currency || 'USD',
+        budgetLimit: user.budgetLimit || undefined,
+      });
+    }
+  }, [user, profileForm]);
+
+  useEffect(() => {
+    fetchUserSettings();
+  }, []);
+
+  const fetchUserSettings = async () => {
+    try {
+      setSettingsLoading(true);
+      const settings = await settingsApi.getUserSettings();
+      setUserSettings(settings);
+    } catch (error) {
+      console.error('Failed to fetch user settings:', error);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
 
   const currencies = [
     { value: 'USD', label: 'US Dollar ($)' },
@@ -115,33 +127,108 @@ const SettingsPage: React.FC = () => {
     { value: 'Australia/Sydney', label: 'Sydney (AEDT)' },
   ];
 
-  const onProfileSubmit = (data: any) => {
-    console.log('Profile data:', data);
-    // Handle profile update
+  const themes = [
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
+    { value: 'auto', label: 'Auto (System)' },
+  ];
+
+  const onProfileSubmit = async (data: UpdateProfileRequest) => {
+    try {
+      setLoading(true);
+      const response = await settingsApi.updateProfile(data);
+      if (response.success && response.user) {
+        updateUser(response.user);
+        // Show success message
+        console.log('Profile updated successfully');
+      }
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const onSecuritySubmit = (data: any) => {
-    console.log('Security data:', data);
-    // Handle password change
+  const onSecuritySubmit = async (data: any) => {
+    try {
+      setLoading(true);
+      const response = await authApi.changePassword({
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+        confirmNewPassword: data.confirmNewPassword,
+      });
+      if (response.success) {
+        securityForm.reset();
+        console.log('Password changed successfully');
+      }
+    } catch (error) {
+      console.error('Failed to change password:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const onBillingSubmit = (data: any) => {
-    console.log('Billing data:', data);
-    // Handle billing settings update
+  const handleNotificationChange = async (key: keyof UserSettings, value: boolean | number | string) => {
+    if (!userSettings) return;
+
+    const updatedSettings = { ...userSettings, [key]: value };
+    setUserSettings(updatedSettings);
+
+    try {
+      await settingsApi.updateUserSettings(updatedSettings);
+      console.log('Settings updated successfully');
+    } catch (error) {
+      console.error('Failed to update settings:', error);
+      // Revert the change on error
+      setUserSettings(userSettings);
+    }
   };
 
-  const handleNotificationChange = (key: string, value: boolean) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      [key]: value,
-    }));
+  const handleDeleteAccount = async () => {
+    try {
+      setLoading(true);
+      const response = await settingsApi.deleteAccount();
+      if (response.success) {
+        // Logout and redirect
+        authApi.logout();
+        window.location.href = '/login';
+      }
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+    } finally {
+      setLoading(false);
+      setIsDeleteDialogOpen(false);
+    }
   };
 
-  const handleDeleteAccount = () => {
-    console.log('Delete account requested');
-    setIsDeleteDialogOpen(false);
-    // Handle account deletion
+  const handleExportData = async () => {
+    try {
+      const blob = await settingsApi.exportData();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `recur-data-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Failed to export data:', error);
+    }
   };
+
+  if (settingsLoading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading settings...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -154,16 +241,16 @@ const SettingsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" size="sm">
-            <CheckCircleIcon className="h-4 w-4 mr-2" />
-            Save All Changes
+          <Button variant="outline" onClick={handleExportData}>
+            <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+            Export Data
           </Button>
         </div>
       </div>
 
       {/* Settings Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <UserIcon className="h-4 w-4" />
             Profile
@@ -175,10 +262,6 @@ const SettingsPage: React.FC = () => {
           <TabsTrigger value="security" className="flex items-center gap-2">
             <ShieldCheckIcon className="h-4 w-4" />
             Security
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="flex items-center gap-2">
-            <CreditCardIcon className="h-4 w-4" />
-            Billing
           </TabsTrigger>
           <TabsTrigger value="advanced" className="flex items-center gap-2">
             <Cog6ToothIcon className="h-4 w-4" />
@@ -209,7 +292,7 @@ const SettingsPage: React.FC = () => {
                         <FormItem>
                           <FormLabel>First Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="John" {...field} />
+                            <Input {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -222,52 +305,40 @@ const SettingsPage: React.FC = () => {
                         <FormItem>
                           <FormLabel>Last Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Doe" {...field} />
+                            <Input {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={profileForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Email Address</FormLabel>
+                  </div>
+
+                  <FormField
+                    control={profileForm.control}
+                    name="timeZone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Time Zone</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <Input type="email" placeholder="john@example.com" {...field} />
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a time zone" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormDescription>
-                            This email will be used for account notifications and login.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={profileForm.control}
-                      name="timeZone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Time Zone</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select timezone" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {timeZones.map((tz) => (
-                                <SelectItem key={tz.value} value={tz.value}>
-                                  {tz.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                          <SelectContent>
+                            {timeZones.map((tz) => (
+                              <SelectItem key={tz.value} value={tz.value}>
+                                {tz.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={profileForm.control}
                       name="currency"
@@ -294,27 +365,32 @@ const SettingsPage: React.FC = () => {
                     />
                     <FormField
                       control={profileForm.control}
-                      name="bio"
+                      name="budgetLimit"
                       render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Bio (Optional)</FormLabel>
+                        <FormItem>
+                          <FormLabel>Monthly Budget Limit</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder="Tell us a bit about yourself..."
-                              className="min-h-[100px]"
-                              {...field} 
+                            <Input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                             />
                           </FormControl>
                           <FormDescription>
-                            A brief description about yourself (max 500 characters).
+                            Set a monthly spending limit for alerts
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
+
                   <div className="flex justify-end">
-                    <Button type="submit">Save Profile</Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? 'Saving...' : 'Save Profile'}
+                    </Button>
                   </div>
                 </form>
               </Form>
@@ -331,122 +407,131 @@ const SettingsPage: React.FC = () => {
                 Notification Preferences
               </CardTitle>
               <CardDescription>
-                Choose how you want to be notified about your subscriptions.
+                Choose what notifications you want to receive.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Email Notifications */}
-              <div>
-                <h3 className="text-lg font-medium mb-4">Email Notifications</h3>
-                <div className="space-y-4">
+              {userSettings && (
+                <>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="email-notifications">Email Notifications</Label>
+                    <div className="space-y-0.5">
+                      <Label>Email Notifications</Label>
                       <p className="text-sm text-gray-600">Receive notifications via email</p>
                     </div>
                     <Switch
-                      id="email-notifications"
-                      checked={notificationSettings.emailNotifications}
+                      checked={userSettings.emailNotifications}
                       onCheckedChange={(checked) => handleNotificationChange('emailNotifications', checked)}
                     />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="weekly-reports">Weekly Reports</Label>
-                      <p className="text-sm text-gray-600">Summary of your weekly spending</p>
-                    </div>
-                    <Switch
-                      id="weekly-reports"
-                      checked={notificationSettings.weeklyReports}
-                      onCheckedChange={(checked) => handleNotificationChange('weeklyReports', checked)}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="monthly-reports">Monthly Reports</Label>
-                      <p className="text-sm text-gray-600">Detailed monthly analytics</p>
-                    </div>
-                    <Switch
-                      id="monthly-reports"
-                      checked={notificationSettings.monthlyReports}
-                      onCheckedChange={(checked) => handleNotificationChange('monthlyReports', checked)}
-                    />
-                  </div>
-                </div>
-              </div>
 
-              <Separator />
+                  <Separator />
 
-              {/* Subscription Alerts */}
-              <div>
-                <h3 className="text-lg font-medium mb-4">Subscription Alerts</h3>
-                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="renewal-reminders">Renewal Reminders</Label>
-                      <p className="text-sm text-gray-600">Get notified before subscriptions renew</p>
+                    <div className="space-y-0.5">
+                      <Label>Trial Ending Alerts</Label>
+                      <p className="text-sm text-gray-600">Get notified when trials are ending</p>
                     </div>
                     <Switch
-                      id="renewal-reminders"
-                      checked={notificationSettings.renewalReminders}
-                      onCheckedChange={(checked) => handleNotificationChange('renewalReminders', checked)}
+                      checked={userSettings.trialEndingAlerts}
+                      onCheckedChange={(checked) => handleNotificationChange('trialEndingAlerts', checked)}
                     />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="trial-expirations">Trial Expirations</Label>
-                      <p className="text-sm text-gray-600">Alerts when free trials are ending</p>
-                    </div>
-                    <Switch
-                      id="trial-expirations"
-                      checked={notificationSettings.trialExpirations}
-                      onCheckedChange={(checked) => handleNotificationChange('trialExpirations', checked)}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="cost-alerts">Cost Alerts</Label>
-                      <p className="text-sm text-gray-600">Notify when spending exceeds budget</p>
-                    </div>
-                    <Switch
-                      id="cost-alerts"
-                      checked={notificationSettings.costAlerts}
-                      onCheckedChange={(checked) => handleNotificationChange('costAlerts', checked)}
-                    />
-                  </div>
-                </div>
-              </div>
 
-              <Separator />
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Billing Reminders</Label>
+                      <p className="text-sm text-gray-600">Reminders before subscription renewals</p>
+                    </div>
+                    <Switch
+                      checked={userSettings.billingReminders}
+                      onCheckedChange={(checked) => handleNotificationChange('billingReminders', checked)}
+                    />
+                  </div>
 
-              {/* Marketing & Updates */}
-              <div>
-                <h3 className="text-lg font-medium mb-4">Marketing & Updates</h3>
-                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="new-features">New Features</Label>
-                      <p className="text-sm text-gray-600">Updates about new app features</p>
+                    <div className="space-y-0.5">
+                      <Label>Price Change Alerts</Label>
+                      <p className="text-sm text-gray-600">Get notified about subscription price changes</p>
                     </div>
                     <Switch
-                      id="new-features"
-                      checked={notificationSettings.newFeatures}
-                      onCheckedChange={(checked) => handleNotificationChange('newFeatures', checked)}
+                      checked={userSettings.priceChangeAlerts}
+                      onCheckedChange={(checked) => handleNotificationChange('priceChangeAlerts', checked)}
                     />
                   </div>
+
                   <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="marketing">Marketing Communications</Label>
-                      <p className="text-sm text-gray-600">Promotional emails and offers</p>
+                    <div className="space-y-0.5">
+                      <Label>Recommendation Alerts</Label>
+                      <p className="text-sm text-gray-600">Receive cost-saving recommendations</p>
                     </div>
                     <Switch
-                      id="marketing"
-                      checked={notificationSettings.marketing}
-                      onCheckedChange={(checked) => handleNotificationChange('marketing', checked)}
+                      checked={userSettings.recommendationAlerts}
+                      onCheckedChange={(checked) => handleNotificationChange('recommendationAlerts', checked)}
                     />
                   </div>
-                </div>
-              </div>
+
+                  <Separator />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label>Trial Ending Reminder (days before)</Label>
+                      <Select
+                        value={userSettings.trialEndingReminderDays.toString()}
+                        onValueChange={(value) => handleNotificationChange('trialEndingReminderDays', parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 day</SelectItem>
+                          <SelectItem value="3">3 days</SelectItem>
+                          <SelectItem value="7">7 days</SelectItem>
+                          <SelectItem value="14">14 days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Billing Reminder (days before)</Label>
+                      <Select
+                        value={userSettings.billingReminderDays.toString()}
+                        onValueChange={(value) => handleNotificationChange('billingReminderDays', parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 day</SelectItem>
+                          <SelectItem value="2">2 days</SelectItem>
+                          <SelectItem value="3">3 days</SelectItem>
+                          <SelectItem value="7">7 days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <Label>Theme Preference</Label>
+                    <Select
+                      value={userSettings.theme}
+                      onValueChange={(value) => handleNotificationChange('theme', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {themes.map((theme) => (
+                          <SelectItem key={theme.value} value={theme.value}>
+                            {theme.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -474,10 +559,9 @@ const SettingsPage: React.FC = () => {
                         <FormLabel>Current Password</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Input 
-                              type={showPassword ? "text" : "password"} 
-                              placeholder="Enter current password"
-                              {...field} 
+                            <Input
+                              type={showPassword ? 'text' : 'password'}
+                              {...field}
                             />
                             <Button
                               type="button"
@@ -498,6 +582,7 @@ const SettingsPage: React.FC = () => {
                       </FormItem>
                     )}
                   />
+
                   <FormField
                     control={securityForm.control}
                     name="newPassword"
@@ -505,154 +590,34 @@ const SettingsPage: React.FC = () => {
                       <FormItem>
                         <FormLabel>New Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Enter new password" {...field} />
+                          <Input type="password" {...field} />
                         </FormControl>
                         <FormDescription>
-                          Password must be at least 8 characters long.
+                          Password must be at least 6 characters long
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
                   <FormField
                     control={securityForm.control}
-                    name="confirmPassword"
+                    name="confirmNewPassword"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Confirm New Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Confirm new password" {...field} />
+                          <Input type="password" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="flex justify-end">
-                    <Button type="submit">Update Password</Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
 
-          {/* Two-Factor Authentication */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <KeyIcon className="h-5 w-5" />
-                Two-Factor Authentication
-              </CardTitle>
-              <CardDescription>
-                Add an extra layer of security to your account.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Two-Factor Authentication</h4>
-                  <p className="text-sm text-gray-600">
-                    Secure your account with 2FA using an authenticator app
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant="destructive">Disabled</Badge>
-                  <Button variant="outline">Enable 2FA</Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Billing Settings */}
-        <TabsContent value="billing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCardIcon className="h-5 w-5" />
-                Billing Preferences
-              </CardTitle>
-              <CardDescription>
-                Configure your billing and budget settings.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...billingForm}>
-                <form onSubmit={billingForm.handleSubmit(onBillingSubmit)} className="space-y-6">
-                  <FormField
-                    control={billingForm.control}
-                    name="defaultCurrency"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Default Currency</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select currency" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {currencies.map((currency) => (
-                              <SelectItem key={currency.value} value={currency.value}>
-                                {currency.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          This will be used for new subscriptions and reports.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={billingForm.control}
-                      name="budgetLimit"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Budget Limit</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              placeholder="500.00" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Set a spending limit for alerts.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={billingForm.control}
-                      name="budgetPeriod"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Budget Period</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select period" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                              <SelectItem value="quarterly">Quarterly</SelectItem>
-                              <SelectItem value="yearly">Yearly</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                   <div className="flex justify-end">
-                    <Button type="submit">Save Billing Settings</Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? 'Changing...' : 'Change Password'}
+                    </Button>
                   </div>
                 </form>
               </Form>
@@ -662,39 +627,32 @@ const SettingsPage: React.FC = () => {
 
         {/* Advanced Settings */}
         <TabsContent value="advanced" className="space-y-6">
-          {/* Data Export */}
           <Card>
             <CardHeader>
-              <CardTitle>Data Export</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                Data Export
+              </CardTitle>
               <CardDescription>
                 Download your subscription data and analytics.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium">Export Subscription Data</h4>
-                    <p className="text-sm text-gray-600">
-                      Download all your subscription information as CSV
-                    </p>
-                  </div>
-                  <Button variant="outline">Export CSV</Button>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div>
+                  <h4 className="font-medium">Export All Data</h4>
+                  <p className="text-sm text-gray-600">
+                    Download all your subscription data as JSON
+                  </p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium">Export Analytics Report</h4>
-                    <p className="text-sm text-gray-600">
-                      Download detailed analytics and insights as PDF
-                    </p>
-                  </div>
-                  <Button variant="outline">Export PDF</Button>
-                </div>
+                <Button variant="outline" onClick={handleExportData}>
+                  <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Danger Zone */}
           <Card className="border-red-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-red-600">
@@ -706,40 +664,38 @@ const SettingsPage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
-                  <div>
-                    <h4 className="font-medium text-red-900">Delete Account</h4>
-                    <p className="text-sm text-red-700">
-                      Permanently delete your account and all associated data
-                    </p>
-                  </div>
-                  <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="destructive">
-                        <TrashIcon className="h-4 w-4 mr-2" />
-                        Delete Account
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Are you absolutely sure?</DialogTitle>
-                        <DialogDescription>
-                          This action cannot be undone. This will permanently delete your account
-                          and remove all your data from our servers.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-                          Cancel
-                        </Button>
-                        <Button variant="destructive" onClick={handleDeleteAccount}>
-                          Yes, delete my account
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+              <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
+                <div>
+                  <h4 className="font-medium text-red-900">Delete Account</h4>
+                  <p className="text-sm text-red-700">
+                    Permanently delete your account and all data. This cannot be undone.
+                  </p>
                 </div>
+                <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive">
+                      <TrashIcon className="h-4 w-4 mr-2" />
+                      Delete Account
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Are you absolutely sure?</DialogTitle>
+                      <DialogDescription>
+                        This action cannot be undone. This will permanently delete your account
+                        and remove all your data from our servers.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button variant="destructive" onClick={handleDeleteAccount} disabled={loading}>
+                        {loading ? 'Deleting...' : 'Delete Account'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
           </Card>

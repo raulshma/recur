@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RecurApi.Data;
 using RecurApi.DTOs;
@@ -8,6 +9,7 @@ using RecurApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 
 namespace RecurApi.Controllers;
 
@@ -203,6 +205,216 @@ public class AuthController : ControllerBase
         return (new JwtSecurityTokenHandler().WriteToken(token), expires);
     }
 
+    [HttpPut("profile")]
+    [Authorize]
+    public async Task<ActionResult<AuthResponseDto>> UpdateProfile(UpdateProfileDto dto)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Unauthorized(new AuthResponseDto
+            {
+                Success = false,
+                Message = "User not found"
+            });
+        }
+
+        user.FirstName = dto.FirstName;
+        user.LastName = dto.LastName;
+        user.TimeZone = dto.TimeZone;
+        user.Currency = dto.Currency;
+        user.BudgetLimit = dto.BudgetLimit;
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = string.Join(", ", result.Errors.Select(e => e.Description))
+            });
+        }
+
+        return Ok(new AuthResponseDto
+        {
+            Success = true,
+            Message = "Profile updated successfully",
+            User = MapToUserDto(user)
+        });
+    }
+
+    [HttpGet("settings")]
+    [Authorize]
+    public async Task<ActionResult<UserSettingsDto>> GetUserSettings()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        var settings = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == user.Id);
+        if (settings == null)
+        {
+            // Create default settings
+            settings = new UserSettings
+            {
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.UserSettings.Add(settings);
+            await _context.SaveChangesAsync();
+        }
+
+        return Ok(MapToUserSettingsDto(settings));
+    }
+
+    [HttpPut("settings")]
+    [Authorize]
+    public async Task<ActionResult<AuthResponseDto>> UpdateUserSettings(UpdateUserSettingsDto dto)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        var settings = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == user.Id);
+        if (settings == null)
+        {
+            settings = new UserSettings
+            {
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.UserSettings.Add(settings);
+        }
+
+        // Update settings
+        settings.EmailNotifications = dto.EmailNotifications;
+        settings.TrialEndingAlerts = dto.TrialEndingAlerts;
+        settings.BillingReminders = dto.BillingReminders;
+        settings.PriceChangeAlerts = dto.PriceChangeAlerts;
+        settings.RecommendationAlerts = dto.RecommendationAlerts;
+        settings.TrialEndingReminderDays = dto.TrialEndingReminderDays;
+        settings.BillingReminderDays = dto.BillingReminderDays;
+        settings.DefaultCurrency = dto.DefaultCurrency;
+        settings.DateFormat = dto.DateFormat;
+        settings.TimeZone = dto.TimeZone;
+        settings.Theme = dto.Theme;
+        settings.DashboardLayout = dto.DashboardLayout;
+        settings.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new AuthResponseDto
+        {
+            Success = true,
+            Message = "Settings updated successfully"
+        });
+    }
+
+    [HttpDelete("account")]
+    [Authorize]
+    public async Task<ActionResult<AuthResponseDto>> DeleteAccount()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        // Delete related data first
+        var subscriptions = await _context.Subscriptions.Where(s => s.UserId == user.Id).ToListAsync();
+        _context.Subscriptions.RemoveRange(subscriptions);
+
+        var alerts = await _context.Alerts.Where(a => a.UserId == user.Id).ToListAsync();
+        _context.Alerts.RemoveRange(alerts);
+
+        var settings = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == user.Id);
+        if (settings != null)
+        {
+            _context.UserSettings.Remove(settings);
+        }
+
+        await _context.SaveChangesAsync();
+
+        // Delete user account
+        var result = await _userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = string.Join(", ", result.Errors.Select(e => e.Description))
+            });
+        }
+
+        return Ok(new AuthResponseDto
+        {
+            Success = true,
+            Message = "Account deleted successfully"
+        });
+    }
+
+    [HttpGet("export-data")]
+    [Authorize]
+    public async Task<ActionResult> ExportUserData()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        var subscriptions = await _context.Subscriptions
+            .Where(s => s.UserId == user.Id)
+            .Include(s => s.Category)
+            .ToListAsync();
+
+        var settings = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == user.Id);
+
+        var exportData = new
+        {
+            User = new
+            {
+                user.Id,
+                user.Email,
+                user.FirstName,
+                user.LastName,
+                user.TimeZone,
+                user.Currency,
+                user.BudgetLimit,
+                user.CreatedAt
+            },
+            Subscriptions = subscriptions.Select(s => new
+            {
+                s.Id,
+                s.Name,
+                s.Description,
+                s.Cost,
+                s.Currency,
+                s.BillingCycle,
+                s.NextBillingDate,
+                s.IsActive,
+                s.IsTrial,
+                s.TrialEndDate,
+                s.CreatedAt,
+                Category = s.Category.Name
+            }),
+            Settings = settings
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(exportData, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        return File(bytes, "application/json", $"recur-data-export-{DateTime.UtcNow:yyyy-MM-dd}.json");
+    }
+
     private static UserDto MapToUserDto(User user)
     {
         return new UserDto
@@ -215,6 +427,25 @@ public class AuthController : ControllerBase
             Currency = user.Currency,
             CreatedAt = user.CreatedAt,
             LastLoginAt = user.LastLoginAt
+        };
+    }
+
+    private static UserSettingsDto MapToUserSettingsDto(UserSettings settings)
+    {
+        return new UserSettingsDto
+        {
+            EmailNotifications = settings.EmailNotifications,
+            TrialEndingAlerts = settings.TrialEndingAlerts,
+            BillingReminders = settings.BillingReminders,
+            PriceChangeAlerts = settings.PriceChangeAlerts,
+            RecommendationAlerts = settings.RecommendationAlerts,
+            TrialEndingReminderDays = settings.TrialEndingReminderDays,
+            BillingReminderDays = settings.BillingReminderDays,
+            DefaultCurrency = settings.DefaultCurrency,
+            DateFormat = settings.DateFormat,
+            TimeZone = settings.TimeZone,
+            Theme = settings.Theme,
+            DashboardLayout = settings.DashboardLayout
         };
     }
 } 
