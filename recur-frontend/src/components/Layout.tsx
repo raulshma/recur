@@ -1,176 +1,363 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   HomeIcon,
-  CreditCardIcon,
+  RectangleStackIcon,
   ChartBarIcon,
   Cog6ToothIcon,
-  UserCircleIcon,
+  UserIcon,
+  BellIcon,
+  MagnifyingGlassIcon,
   Bars3Icon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
+  SunIcon,
+  MoonIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { useAuth } from '../context/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Subscriptions', href: '/subscriptions', icon: CreditCardIcon },
-  { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
-  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
-];
-
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  const navigation = [
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: HomeIcon,
+      current: location.pathname === '/dashboard',
+    },
+    {
+      name: 'Subscriptions',
+      href: '/subscriptions',
+      icon: RectangleStackIcon,
+      current: location.pathname === '/subscriptions',
+      badge: '14', // Mock count - would come from API
+    },
+    {
+      name: 'Analytics',
+      href: '/analytics',
+      icon: ChartBarIcon,
+      current: location.pathname === '/analytics',
+    },
+    {
+      name: 'Settings',
+      href: '/settings',
+      icon: Cog6ToothIcon,
+      current: location.pathname === '/settings',
+    },
+  ];
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+    // In a real app, this would toggle the theme
+    document.documentElement.classList.toggle('dark');
+  };
+
+  const getUserInitials = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
+    }
+    return user?.email?.charAt(0).toUpperCase() || 'U';
+  };
+
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200">
+        <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+          <RectangleStackIcon className="h-5 w-5 text-white" />
+        </div>
+        <span className="text-xl font-bold text-gray-900">Recur</span>
+      </div>
+
+      {/* Search */}
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="relative">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Input
+            placeholder="Search subscriptions..."
+            className="pl-10 h-9"
+          />
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-6 py-4 space-y-2">
+        {navigation.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.name}
+              to={item.href}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                item.current
+                  ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <Icon className="h-5 w-5" />
+              <span className="flex-1">{item.name}</span>
+              {item.badge && (
+                <Badge variant="secondary" className="ml-auto">
+                  {item.badge}
+                </Badge>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Quick Stats */}
+      <div className="px-6 py-4 border-t border-gray-200">
+        <Card className="p-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Monthly Spend</span>
+              <span className="text-sm font-medium">$237.29</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Active</span>
+              <span className="text-sm font-medium">14 services</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Next Bill</span>
+              <span className="text-sm font-medium">3 days</span>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* User Profile */}
+      <div className="px-6 py-4 border-t border-gray-200">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="w-full justify-start p-2 h-auto">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="" alt={user?.firstName} />
+                  <AvatarFallback className="bg-orange-500 text-white text-sm">
+                    {getUserInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500">{user?.email}</p>
+                </div>
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <UserIcon className="h-4 w-4 mr-2" />
+              Profile Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={toggleDarkMode}>
+              {isDarkMode ? (
+                <SunIcon className="h-4 w-4 mr-2" />
+              ) : (
+                <MoonIcon className="h-4 w-4 mr-2" />
+              )}
+              {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <QuestionMarkCircleIcon className="h-4 w-4 mr-2" />
+              Help & Support
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+              <ArrowRightOnRectangleIcon className="h-4 w-4 mr-2" />
+              Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-gray-50">
-      {/* Mobile sidebar */}
-      <div
-        className={`fixed inset-0 flex z-40 md:hidden ${
-          sidebarOpen ? '' : 'pointer-events-none'
-        }`}
-      >
-        <div
-          className={`fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity ${
-            sidebarOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-          onClick={() => setSidebarOpen(false)}
-        />
-        <div
-          className={`relative flex-1 flex flex-col max-w-xs w-full bg-white transform transition-transform ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-        >
-          <div className="absolute top-0 right-0 -mr-12 pt-2">
-            <button
-              className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <XMarkIcon className="h-6 w-6 text-white" />
-            </button>
-          </div>
-          <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-            <div className="flex-shrink-0 flex items-center px-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">R</span>
-                </div>
-                <h1 className="text-xl font-bold text-gray-900">Recur</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+        <Card className="flex-1 border-r border-gray-200 bg-white">
+          <SidebarContent />
+        </Card>
+      </div>
+
+      {/* Mobile Header */}
+      <div className="lg:hidden">
+        <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Bars3Icon className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0">
+                <SidebarContent />
+              </SheetContent>
+            </Sheet>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-orange-500 rounded-md flex items-center justify-center">
+                <RectangleStackIcon className="h-4 w-4 text-white" />
               </div>
+              <span className="text-lg font-bold text-gray-900">Recur</span>
             </div>
-            <nav className="mt-8 px-4 space-y-1">
-              {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`nav-link ${isActive ? 'active' : ''}`}
-                    onClick={() => setSidebarOpen(false)}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Notifications */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="relative">
+                  <BellIcon className="h-5 w-5" />
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
                   >
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </nav>
+                    3
+                  </Badge>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm font-medium">Netflix renewal in 3 days</p>
+                    <p className="text-xs text-gray-500">$19.99 will be charged</p>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm font-medium">Spotify trial ending soon</p>
+                    <p className="text-xs text-gray-500">Free trial ends in 5 days</p>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm font-medium">Monthly budget alert</p>
+                    <p className="text-xs text-gray-500">You've spent 80% of your budget</p>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="p-1">
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src="" alt={user?.firstName} />
+                    <AvatarFallback className="bg-orange-500 text-white text-xs">
+                      {getUserInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">
+                      {user?.firstName} {user?.lastName}
+                    </p>
+                    <p className="text-xs text-gray-500">{user?.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <UserIcon className="h-4 w-4 mr-2" />
+                  Profile Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={toggleDarkMode}>
+                  {isDarkMode ? (
+                    <SunIcon className="h-4 w-4 mr-2" />
+                  ) : (
+                    <MoonIcon className="h-4 w-4 mr-2" />
+                  )}
+                  {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <ArrowRightOnRectangleIcon className="h-4 w-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
-      {/* Static sidebar for desktop */}
-      <div className="hidden md:flex md:flex-shrink-0">
-        <div className="flex flex-col w-64">
-          <div className="flex flex-col h-0 flex-1 bg-white border-r border-gray-200 shadow-sm">
-            <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-              <div className="flex items-center flex-shrink-0 px-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-lg">R</span>
-                  </div>
-                  <h1 className="text-xl font-bold text-gray-900">Recur</h1>
-                </div>
-              </div>
-              <nav className="mt-8 flex-1 px-4 space-y-1">
-                {navigation.map((item) => {
-                  const isActive = location.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={`nav-link ${isActive ? 'active' : ''}`}
-                    >
-                      <item.icon className="mr-3 h-5 w-5" />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="flex flex-col w-full flex-1 overflow-hidden">
-        {/* Top nav */}
-        <div className="relative z-10 flex-shrink-0 flex h-16 bg-white shadow-sm border-b border-gray-200">
-          <button
-            className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 md:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Bars3Icon className="h-6 w-6" />
-          </button>
-          <div className="flex-1 px-4 flex justify-between items-center">
-            <div className="flex-1 flex">
-              {/* Add search or breadcrumbs here if needed */}
-            </div>
-            <div className="flex items-center space-x-4">
-              {/* User menu */}
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">
-                    {user?.firstName} {user?.lastName}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {user?.email}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-medium text-sm">
-                      {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={logout}
-                    className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    title="Sign out"
-                  >
-                    <UserCircleIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Page content */}
-        <main className="flex-1 relative overflow-y-auto focus:outline-none bg-gray-50">
-          <div className="py-6">
-            <div className="content-container">
-              {children}
-            </div>
+      {/* Main Content */}
+      <div className="lg:pl-72">
+        <main className="py-6 px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            {children}
           </div>
         </main>
+      </div>
+
+      {/* Footer */}
+      <div className="lg:pl-72">
+        <footer className="border-t border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <span>&copy; 2024 Recur. All rights reserved.</span>
+                <Link to="/privacy" className="hover:text-gray-700">Privacy</Link>
+                <Link to="/terms" className="hover:text-gray-700">Terms</Link>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <span>Version 1.0.0</span>
+                <Link to="/help" className="hover:text-gray-700">Help</Link>
+                <Link to="/feedback" className="hover:text-gray-700">Feedback</Link>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );
 };
 
-export default Layout; 
+export default Layout;

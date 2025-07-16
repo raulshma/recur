@@ -7,8 +7,18 @@ import {
   ExclamationTriangleIcon,
   PlusIcon,
   ArrowTrendingUpIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+  BellIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatsCard } from '@/components/ui/stats-card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { EmptyState } from '@/components/ui/empty-state';
+import { BarChart, DonutChart } from '@/components/ui/chart';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -16,177 +26,243 @@ const DashboardPage: React.FC = () => {
   // Mock data - in a real app this would come from your API
   const stats = [
     {
-      id: 1,
-      name: 'Monthly Cost',
+      title: 'Monthly Cost',
       value: '$0.00',
-      change: '+0%',
-      changeType: 'neutral',
-      icon: CurrencyDollarIcon,
-      color: 'primary',
+      change: { value: 0, type: 'neutral' as const, period: 'from last month' },
+      icon: <CurrencyDollarIcon className="h-6 w-6" />,
     },
     {
-      id: 2,
-      name: 'Active Subscriptions',
+      title: 'Active Subscriptions',
       value: '0',
-      change: '+0',
-      changeType: 'neutral',
-      icon: RectangleStackIcon,
-      color: 'success',
+      change: { value: 0, type: 'neutral' as const, period: 'from last month' },
+      icon: <RectangleStackIcon className="h-6 w-6" />,
     },
     {
-      id: 3,
-      name: 'Upcoming Bills',
+      title: 'Upcoming Bills',
       value: '0',
-      change: 'Next 7 days',
-      changeType: 'neutral',
-      icon: ClockIcon,
-      color: 'warning',
+      change: { value: 0, type: 'neutral' as const, period: 'next 7 days' },
+      icon: <ClockIcon className="h-6 w-6" />,
     },
     {
-      id: 4,
-      name: 'Trials Ending',
+      title: 'Trials Ending',
       value: '0',
-      change: 'This month',
-      changeType: 'neutral',
-      icon: ExclamationTriangleIcon,
-      color: 'danger',
+      change: { value: 0, type: 'neutral' as const, period: 'this month' },
+      icon: <ExclamationTriangleIcon className="h-6 w-6" />,
     },
   ];
 
-  const getIconColorClass = (color: string) => {
-    switch (color) {
-      case 'primary':
-        return 'bg-primary-500 text-white';
-      case 'success':
-        return 'bg-success-500 text-white';
-      case 'warning':
-        return 'bg-warning-500 text-white';
-      case 'danger':
-        return 'bg-danger-500 text-white';
-      default:
-        return 'bg-gray-500 text-white';
-    }
-  };
+  // Mock chart data
+  const monthlySpendingData = [
+    { name: 'Jan', value: 0 },
+    { name: 'Feb', value: 0 },
+    { name: 'Mar', value: 0 },
+    { name: 'Apr', value: 0 },
+    { name: 'May', value: 0 },
+    { name: 'Jun', value: 0 },
+  ];
+
+  const categoryData = [
+    { name: 'Entertainment', value: 0, color: '#FF6B35' },
+    { name: 'Productivity', value: 0, color: '#4ECDC4' },
+    { name: 'Development', value: 0, color: '#45B7D1' },
+    { name: 'Design', value: 0, color: '#96CEB4' },
+  ];
+
+  const upcomingBills = [
+    // Mock empty data - would be populated from API
+  ];
+
+  const recentActivity = [
+    // Mock empty data - would be populated from API
+  ];
 
   return (
-    <div className="animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       {/* Page Header */}
-      <div className="page-header">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="page-title">
-              Welcome back, {user?.firstName}! 👋
-            </h1>
-            <p className="page-subtitle">
-              Here's an overview of your subscriptions and upcoming bills.
-            </p>
-          </div>
-          <Button className="btn-primary flex items-center space-x-2">
-            <PlusIcon className="h-5 w-5" />
-            <span>Add Subscription</span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome back, {user?.firstName}!
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Here's an overview of your subscriptions and upcoming bills.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" size="sm">
+            <BellIcon className="h-4 w-4 mr-2" />
+            Notifications
           </Button>
-          {/* <button className="btn-primary flex items-center space-x-2">
-
-          </button> */}
+          <Button>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Subscription
+          </Button>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {stats.map((stat) => (
-          <div key={stat.id} className="metric-card group">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getIconColorClass(stat.color)} shadow-sm`}>
-                  <stat.icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="metric-label">{stat.name}</p>
-                  <p className="metric-value">{stat.value}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500">{stat.change}</div>
-              </div>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {stats.map((stat, index) => (
+          <StatsCard
+            key={index}
+            title={stat.title}
+            value={stat.value}
+            change={stat.change}
+            icon={stat.icon}
+          />
         ))}
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Activity */}
-        <div className="lg:col-span-2">
-          <div className="card">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
-              <button className="btn-ghost text-sm">View all</button>
-            </div>
+        {/* Charts Section */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Monthly Spending Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ChartBarIcon className="h-5 w-5" />
+                Monthly Spending Trend
+              </CardTitle>
+              <CardDescription>
+                Your subscription costs over the last 6 months
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BarChart data={monthlySpendingData} height={300} showValues />
+            </CardContent>
+          </Card>
 
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <RectangleStackIcon className="h-8 w-8 text-gray-400" />
-              </div>
-              <h4 className="text-lg font-medium text-gray-900 mb-2">No subscriptions yet</h4>
-              <p className="text-gray-600 mb-6">
-                Start tracking your subscriptions to see your activity here.
-              </p>
-              <button className="btn-primary">
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Add your first subscription
-              </button>
-            </div>
-          </div>
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>
+                Latest changes to your subscriptions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EmptyState
+                icon={<RectangleStackIcon className="h-12 w-12" />}
+                title="No subscriptions yet"
+                description="Start tracking your subscriptions to see your activity here."
+                action={
+                  <Button>
+                    <PlusIcon className="h-4 w-4 mr-2" />
+                    Add your first subscription
+                  </Button>
+                }
+              />
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Quick Actions & Insights */}
+        {/* Sidebar */}
         <div className="space-y-6">
+          {/* Category Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Spending by Category</CardTitle>
+              <CardDescription>
+                How your money is distributed
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center">
+              <DonutChart data={categoryData} size={200} />
+              <div className="mt-4 space-y-2 w-full">
+                {categoryData.map((category, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full border border-black"
+                        style={{ backgroundColor: category.color }}
+                      />
+                      <span className="text-sm font-medium">{category.name}</span>
+                    </div>
+                    <span className="text-sm text-gray-600">${category.value}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Upcoming Bills */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDaysIcon className="h-5 w-5" />
+                Upcoming Bills
+              </CardTitle>
+              <CardDescription>
+                Next 7 days
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {upcomingBills.length === 0 ? (
+                <div className="text-center py-6">
+                  <ClockIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">No upcoming bills</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {upcomingBills.map((bill: any, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                      <div>
+                        <p className="font-medium">{bill.name}</p>
+                        <p className="text-sm text-gray-600">{bill.date}</p>
+                      </div>
+                      <Badge variant="warning">${bill.amount}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Quick Actions */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <button className="w-full flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-colors duration-200 text-left">
-                <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-lg flex items-center justify-center">
-                  <PlusIcon className="h-4 w-4" />
-                </div>
-                <span className="text-sm font-medium text-gray-900">Add Subscription</span>
-              </button>
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button variant="outline" className="w-full justify-start">
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add Subscription
+              </Button>
+              <Button variant="outline" className="w-full justify-start">
+                <ArrowTrendingUpIcon className="h-4 w-4 mr-2" />
+                View Analytics
+              </Button>
+              <Button variant="outline" className="w-full justify-start">
+                <Cog6ToothIcon className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </CardContent>
+          </Card>
 
-              <button className="w-full flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-success-300 hover:bg-success-50 transition-colors duration-200 text-left">
-                <div className="w-8 h-8 bg-success-100 text-success-600 rounded-lg flex items-center justify-center">
-                  <ArrowTrendingUpIcon className="h-4 w-4" />
-                </div>
-                <span className="text-sm font-medium text-gray-900">View Analytics</span>
-              </button>
-
-              <button className="w-full flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-warning-300 hover:bg-warning-50 transition-colors duration-200 text-left">
-                <div className="w-8 h-8 bg-warning-100 text-warning-600 rounded-lg flex items-center justify-center">
-                  <ClockIcon className="h-4 w-4" />
-                </div>
-                <span className="text-sm font-medium text-gray-900">Set Reminders</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Insights Card */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">💡 Insights</h3>
-            <div className="bg-gradient-to-r from-primary-50 to-secondary-50 p-4 rounded-lg border border-primary-100">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">
-                Start tracking your subscriptions
-              </h4>
-              <p className="text-sm text-gray-600 mb-3">
-                Add your first subscription to start getting insights about your spending patterns.
-              </p>
-              <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                Learn more →
-              </button>
-            </div>
-          </div>
+          {/* Insights */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Insights</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
+                <h4 className="font-medium text-gray-900 mb-2">
+                  Start tracking your subscriptions
+                </h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  Add your first subscription to start getting insights about your spending patterns.
+                </p>
+                <Button variant="link" className="p-0 h-auto text-orange-600">
+                  Learn more
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
   );
 };
 
-export default DashboardPage; 
+export default DashboardPage;
