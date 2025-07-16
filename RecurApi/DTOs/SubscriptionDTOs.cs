@@ -108,6 +108,14 @@ public class SubscriptionDto
     public DateTime UpdatedAt { get; set; }
     
     public CategoryDto Category { get; set; } = null!;
+    
+    // Currency conversion properties
+    public decimal? ConvertedCost { get; set; }
+    public string? ConvertedCurrency { get; set; }
+    public decimal? ExchangeRate { get; set; }
+    public DateTime? RateTimestamp { get; set; }
+    public bool IsConverted { get; set; }
+    public bool IsRateStale { get; set; }
 }
 
 public class CategoryDto
@@ -157,6 +165,10 @@ public class DashboardStatsDto
     public int UpcomingBills { get; set; }
     public int TrialEnding { get; set; }
     public int DaysUntilNextBilling { get; set; }
+    
+    // Currency-aware properties
+    public string DisplayCurrency { get; set; } = string.Empty;
+    public List<CurrencyBreakdown> CurrencyBreakdowns { get; set; } = new();
 }
 
 public class NotificationDto
@@ -191,6 +203,11 @@ public class UpcomingBillDto
     public DateTime Date { get; set; }
     public string CategoryName { get; set; } = string.Empty;
     public string CategoryColor { get; set; } = string.Empty;
+    
+    // Currency conversion properties
+    public decimal? ConvertedAmount { get; set; }
+    public string? ConvertedCurrency { get; set; }
+    public bool IsConverted { get; set; }
 }
 
 public class RecentActivityDto
@@ -244,4 +261,22 @@ public class SpendingPatternsDto
     public double AverageServiceLifeMonths { get; set; }
     public double CancellationRate { get; set; }
     public string PeakSpendingMonth { get; set; } = string.Empty;
-} 
+}
+
+public class CurrencyConversionResult
+{
+    public decimal ConvertedAmount { get; set; }
+    public decimal ExchangeRate { get; set; }
+    public DateTime RateTimestamp { get; set; }
+    public bool IsStale { get; set; }
+    public string FromCurrency { get; set; } = string.Empty;
+    public string ToCurrency { get; set; } = string.Empty;
+}
+
+public class CurrencyBreakdown
+{
+    public string Currency { get; set; } = string.Empty;
+    public decimal OriginalAmount { get; set; }
+    public decimal ConvertedAmount { get; set; }
+    public int SubscriptionCount { get; set; }
+}

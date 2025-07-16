@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecurApi.Data;
 using RecurApi.DTOs;
+using RecurApi.Services;
 using System.Security.Claims;
 
 namespace RecurApi.Controllers;
@@ -13,14 +14,16 @@ namespace RecurApi.Controllers;
 public class DashboardController : ControllerBase
 {
     private readonly RecurDbContext _context;
+    private readonly ICurrencyConversionService _currencyConversionService;
 
-    public DashboardController(RecurDbContext context)
+    public DashboardController(RecurDbContext context, ICurrencyConversionService currencyConversionService)
     {
         _context = context;
+        _currencyConversionService = currencyConversionService;
     }
 
     [HttpGet("stats")]
-    public async Task<ActionResult<DashboardStatsDto>> GetDashboardStats()
+    public async Task<ActionResult<DashboardStatsDto>> GetDashboardStats([FromQuery] string? displayCurrency = null)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -35,11 +38,52 @@ public class DashboardController : ControllerBase
         var activeSubscriptions = subscriptions.Where(s => s.IsActive).ToList();
         var currentDate = DateTime.UtcNow;
 
-        // Calculate monthly cost (convert all to monthly equivalent)
-        var totalMonthlyCost = activeSubscriptions.Sum(s => s.GetMonthlyCost());
+        // Get user's preferred currency or default to USD
+        var user = await _context.Users.FindAsync(userId);
+        var targetCurrency = displayCurrency ?? user?.PreferredCurrency ?? "USD";
+
+        // Group subscriptions by currency for breakdown
+        var currencyGroups = activeSubscriptions
+            .GroupBy(s => s.Currency)
+            .ToList();
+
+        var currencyBreakdowns = new List<CurrencyBreakdown>();
+        decimal totalConvertedMonthlyCost = 0;
+
+        // Process each currency group
+        foreach (var group in currencyGroups)
+        {
+            var originalAmount = group.Sum(s => s.GetMonthlyCost());
+            var convertedAmount = originalAmount;
+
+            // Convert to target currency if different
+            if (group.Key != targetCurrency)
+            {
+                try
+                {
+                    convertedAmount = await _currencyConversionService.ConvertAsync(
+                        originalAmount, group.Key, targetCurrency);
+                }
+                catch
+                {
+                    // If conversion fails, use original amount as fallback
+                    convertedAmount = originalAmount;
+                }
+            }
+
+            currencyBreakdowns.Add(new CurrencyBreakdown
+            {
+                Currency = group.Key,
+                OriginalAmount = originalAmount,
+                ConvertedAmount = convertedAmount,
+                SubscriptionCount = group.Count()
+            });
+
+            totalConvertedMonthlyCost += convertedAmount;
+        }
 
         // Calculate annual cost
-        var totalAnnualCost = totalMonthlyCost * 12;
+        var totalAnnualCost = totalConvertedMonthlyCost * 12;
 
         // Get upcoming bills (next 30 days)
         var upcomingBills = activeSubscriptions
@@ -66,11 +110,13 @@ public class DashboardController : ControllerBase
         {
             TotalSubscriptions = subscriptions.Count,
             ActiveSubscriptions = activeSubscriptions.Count,
-            TotalMonthlyCost = totalMonthlyCost,
+            TotalMonthlyCost = totalConvertedMonthlyCost,
             TotalAnnualCost = totalAnnualCost,
             UpcomingBills = upcomingBills,
             TrialEnding = trialsEnding,
-            DaysUntilNextBilling = daysUntilNextBilling
+            DaysUntilNextBilling = daysUntilNextBilling,
+            DisplayCurrency = targetCurrency,
+            CurrencyBreakdowns = currencyBreakdowns
         };
 
         return Ok(stats);
@@ -168,7 +214,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("monthly-spending")]
-    public async Task<ActionResult<IEnumerable<MonthlySpendingDto>>> GetMonthlySpending()
+    public async Task<ActionResult<IEnumerable<MonthlySpendingDto>>> GetMonthlySpending([FromQuery] string? displayCurrency = null)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -179,6 +225,10 @@ public class DashboardController : ControllerBase
         var subscriptions = await _context.Subscriptions
             .Where(s => s.UserId == userId)
             .ToListAsync();
+
+        // Get user's preferred currency or default to USD
+        var user = await _context.Users.FindAsync(userId);
+        var targetCurrency = displayCurrency ?? user?.PreferredCurrency ?? "USD";
 
         var monthlyData = new List<MonthlySpendingDto>();
         var currentDate = DateTime.UtcNow;
@@ -195,12 +245,37 @@ public class DashboardController : ControllerBase
                            (!s.CancellationDate.HasValue || s.CancellationDate.Value >= targetDate))
                 .ToList();
 
-            var monthlySpending = activeSubscriptions.Sum(s => s.GetMonthlyCost());
+            // Group by currency and convert to target currency
+            var currencyGroups = activeSubscriptions.GroupBy(s => s.Currency);
+            decimal totalConvertedSpending = 0;
+
+            foreach (var group in currencyGroups)
+            {
+                var originalAmount = group.Sum(s => s.GetMonthlyCost());
+                var convertedAmount = originalAmount;
+
+                // Convert to target currency if different
+                if (group.Key != targetCurrency)
+                {
+                    try
+                    {
+                        convertedAmount = await _currencyConversionService.ConvertAsync(
+                            originalAmount, group.Key, targetCurrency);
+                    }
+                    catch
+                    {
+                        // If conversion fails, use original amount as fallback
+                        convertedAmount = originalAmount;
+                    }
+                }
+
+                totalConvertedSpending += convertedAmount;
+            }
 
             monthlyData.Add(new MonthlySpendingDto
             {
                 Name = monthName,
-                Value = monthlySpending
+                Value = totalConvertedSpending
             });
         }
 
@@ -208,7 +283,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("category-spending")]
-    public async Task<ActionResult<IEnumerable<CategorySpendingDto>>> GetCategorySpending()
+    public async Task<ActionResult<IEnumerable<CategorySpendingDto>>> GetCategorySpending([FromQuery] string? displayCurrency = null)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -216,27 +291,62 @@ public class DashboardController : ControllerBase
             return Unauthorized();
         }
 
+        // Get user's preferred currency or default to USD
+        var user = await _context.Users.FindAsync(userId);
+        var targetCurrency = displayCurrency ?? user?.PreferredCurrency ?? "USD";
+
         // Get subscriptions and calculate on client side
         var subscriptions = await _context.Subscriptions
             .Where(s => s.UserId == userId && s.IsActive)
             .Include(s => s.Category)
             .ToListAsync();
 
-        var categorySpending = subscriptions
-            .GroupBy(s => s.Category)
-            .Select(g => new CategorySpendingDto
+        var categorySpending = new List<CategorySpendingDto>();
+
+        var categoryGroups = subscriptions.GroupBy(s => s.Category);
+
+        foreach (var categoryGroup in categoryGroups)
+        {
+            // Group subscriptions in this category by currency
+            var currencyGroups = categoryGroup.GroupBy(s => s.Currency);
+            decimal totalConvertedAmount = 0;
+
+            foreach (var currencyGroup in currencyGroups)
             {
-                Name = g.Key.Name,
-                Value = g.Sum(s => s.GetMonthlyCost()),
-                Color = g.Key.Color
-            })
-            .ToList();
+                var originalAmount = currencyGroup.Sum(s => s.GetMonthlyCost());
+                var convertedAmount = originalAmount;
+
+                // Convert to target currency if different
+                if (currencyGroup.Key != targetCurrency)
+                {
+                    try
+                    {
+                        convertedAmount = await _currencyConversionService.ConvertAsync(
+                            originalAmount, currencyGroup.Key, targetCurrency);
+                    }
+                    catch
+                    {
+                        // If conversion fails, use original amount as fallback
+                        convertedAmount = originalAmount;
+                    }
+                }
+
+                totalConvertedAmount += convertedAmount;
+            }
+
+            categorySpending.Add(new CategorySpendingDto
+            {
+                Name = categoryGroup.Key.Name,
+                Value = totalConvertedAmount,
+                Color = categoryGroup.Key.Color
+            });
+        }
 
         return Ok(categorySpending);
     }
 
     [HttpGet("upcoming-bills")]
-    public async Task<ActionResult<IEnumerable<UpcomingBillDto>>> GetUpcomingBills()
+    public async Task<ActionResult<IEnumerable<UpcomingBillDto>>> GetUpcomingBills([FromQuery] string? displayCurrency = null)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -245,24 +355,59 @@ public class DashboardController : ControllerBase
         }
 
         var currentDate = DateTime.UtcNow;
-        var upcomingBills = await _context.Subscriptions
+        var subscriptions = await _context.Subscriptions
             .Where(s => s.UserId == userId && s.IsActive && 
                        s.NextBillingDate <= currentDate.AddDays(7) &&
                        s.NextBillingDate > currentDate)
             .Include(s => s.Category)
             .OrderBy(s => s.NextBillingDate)
             .Take(5)
-            .Select(s => new UpcomingBillDto
-            {
-                Id = s.Id,
-                Name = s.Name,
-                Amount = s.Cost,
-                Currency = s.Currency,
-                Date = s.NextBillingDate,
-                CategoryName = s.Category.Name,
-                CategoryColor = s.Category.Color
-            })
             .ToListAsync();
+
+        // Get user's preferred currency or default to USD
+        var user = await _context.Users.FindAsync(userId);
+        var targetCurrency = displayCurrency ?? user?.PreferredCurrency ?? "USD";
+
+        var upcomingBills = new List<UpcomingBillDto>();
+
+        foreach (var subscription in subscriptions)
+        {
+            var bill = new UpcomingBillDto
+            {
+                Id = subscription.Id,
+                Name = subscription.Name,
+                Amount = subscription.Cost,
+                Currency = subscription.Currency,
+                Date = subscription.NextBillingDate,
+                CategoryName = subscription.Category.Name,
+                CategoryColor = subscription.Category.Color
+            };
+
+            // Convert currency if needed
+            if (subscription.Currency != targetCurrency)
+            {
+                try
+                {
+                    var convertedAmount = await _currencyConversionService.ConvertAsync(
+                        subscription.Cost, subscription.Currency, targetCurrency);
+                    
+                    bill.ConvertedAmount = convertedAmount;
+                    bill.ConvertedCurrency = targetCurrency;
+                    bill.IsConverted = true;
+                }
+                catch
+                {
+                    // If conversion fails, keep original values
+                    bill.IsConverted = false;
+                }
+            }
+            else
+            {
+                bill.IsConverted = false;
+            }
+
+            upcomingBills.Add(bill);
+        }
 
         return Ok(upcomingBills);
     }

@@ -178,7 +178,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <span className="text-sm text-gray-600">Monthly Spend</span>
               <span className="text-sm font-medium">
                 {dashboardStats?.totalMonthlyCost 
-                  ? formatCurrency(dashboardStats.totalMonthlyCost, user?.currency || 'USD')
+                  ? formatCurrency(dashboardStats.totalMonthlyCost, dashboardStats.displayCurrency || user?.currency || 'USD')
                   : formatCurrency(0, user?.currency || 'USD')
                 }
               </span>
