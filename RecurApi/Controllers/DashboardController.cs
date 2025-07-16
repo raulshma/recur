@@ -166,6 +166,134 @@ public class DashboardController : ControllerBase
 
         return Ok(notifications.OrderByDescending(n => n.Timestamp).Take(10));
     }
+
+    [HttpGet("monthly-spending")]
+    public async Task<ActionResult<IEnumerable<MonthlySpendingDto>>> GetMonthlySpending()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var subscriptions = await _context.Subscriptions
+            .Where(s => s.UserId == userId)
+            .ToListAsync();
+
+        var monthlyData = new List<MonthlySpendingDto>();
+        var currentDate = DateTime.UtcNow;
+
+        // Get last 6 months of data
+        for (int i = 5; i >= 0; i--)
+        {
+            var targetDate = currentDate.AddMonths(-i);
+            var monthName = targetDate.ToString("MMM");
+            
+            // Calculate spending for subscriptions that were active during this month
+            var activeSubscriptions = subscriptions
+                .Where(s => s.CreatedAt <= targetDate.AddMonths(1).AddDays(-1) && 
+                           (!s.CancellationDate.HasValue || s.CancellationDate.Value >= targetDate))
+                .ToList();
+
+            var monthlySpending = activeSubscriptions.Sum(s => s.GetMonthlyCost());
+
+            monthlyData.Add(new MonthlySpendingDto
+            {
+                Name = monthName,
+                Value = monthlySpending
+            });
+        }
+
+        return Ok(monthlyData);
+    }
+
+    [HttpGet("category-spending")]
+    public async Task<ActionResult<IEnumerable<CategorySpendingDto>>> GetCategorySpending()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        // Get subscriptions and calculate on client side
+        var subscriptions = await _context.Subscriptions
+            .Where(s => s.UserId == userId && s.IsActive)
+            .Include(s => s.Category)
+            .ToListAsync();
+
+        var categorySpending = subscriptions
+            .GroupBy(s => s.Category)
+            .Select(g => new CategorySpendingDto
+            {
+                Name = g.Key.Name,
+                Value = g.Sum(s => s.GetMonthlyCost()),
+                Color = g.Key.Color
+            })
+            .ToList();
+
+        return Ok(categorySpending);
+    }
+
+    [HttpGet("upcoming-bills")]
+    public async Task<ActionResult<IEnumerable<UpcomingBillDto>>> GetUpcomingBills()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var currentDate = DateTime.UtcNow;
+        var upcomingBills = await _context.Subscriptions
+            .Where(s => s.UserId == userId && s.IsActive && 
+                       s.NextBillingDate <= currentDate.AddDays(7) &&
+                       s.NextBillingDate > currentDate)
+            .Include(s => s.Category)
+            .OrderBy(s => s.NextBillingDate)
+            .Take(5)
+            .Select(s => new UpcomingBillDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Amount = s.Cost,
+                Currency = s.Currency,
+                Date = s.NextBillingDate,
+                CategoryName = s.Category.Name,
+                CategoryColor = s.Category.Color
+            })
+            .ToListAsync();
+
+        return Ok(upcomingBills);
+    }
+
+    [HttpGet("recent-activity")]
+    public async Task<ActionResult<IEnumerable<RecentActivityDto>>> GetRecentActivity()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var recentSubscriptions = await _context.Subscriptions
+            .Where(s => s.UserId == userId)
+            .Include(s => s.Category)
+            .OrderByDescending(s => s.UpdatedAt)
+            .Take(5)
+            .Select(s => new RecentActivityDto
+            {
+                Id = s.Id,
+                Type = s.CreatedAt == s.UpdatedAt ? "created" : "updated",
+                Title = s.CreatedAt == s.UpdatedAt ? $"Added {s.Name}" : $"Updated {s.Name}",
+                Description = $"${s.Cost:F2} {s.BillingCycle.ToString().ToLower()}",
+                Timestamp = s.UpdatedAt,
+                CategoryColor = s.Category.Color
+            })
+            .ToListAsync();
+
+        return Ok(recentSubscriptions);
+    }
 }
 
 // Extension method for calculating monthly cost

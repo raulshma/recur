@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { dashboardApi, type DashboardStats, type MonthlySpending, type CategorySpending, type UpcomingBill, type RecentActivity } from '../api/dashboard';
 import {
   CurrencyDollarIcon,
   RectangleStackIcon,
@@ -22,59 +23,105 @@ import { BarChart, DonutChart } from '@/components/ui/chart';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [monthlySpendingData, setMonthlySpendingData] = useState<MonthlySpending[]>([]);
+  const [categoryData, setCategoryData] = useState<CategorySpending[]>([]);
+  const [upcomingBills, setUpcomingBills] = useState<UpcomingBill[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - in a real app this would come from your API
-  const stats = [
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [stats, monthlySpending, categorySpending, bills, activity] = await Promise.all([
+          dashboardApi.getStats(),
+          dashboardApi.getMonthlySpending(),
+          dashboardApi.getCategorySpending(),
+          dashboardApi.getUpcomingBills(),
+          dashboardApi.getRecentActivity(),
+        ]);
+
+        setDashboardStats(stats);
+        setMonthlySpendingData(monthlySpending);
+        setCategoryData(categorySpending);
+        setUpcomingBills(bills);
+        setRecentActivity(activity);
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+        setError('Failed to load dashboard data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
+
+  // Create stats array from API data
+  const stats = dashboardStats ? [
     {
       title: 'Monthly Cost',
-      value: '$0.00',
+      value: `$${dashboardStats.totalMonthlyCost.toFixed(2)}`,
       change: { value: 0, type: 'neutral' as const, period: 'from last month' },
       icon: <CurrencyDollarIcon className="h-6 w-6" />,
     },
     {
       title: 'Active Subscriptions',
-      value: '0',
+      value: dashboardStats.activeSubscriptions.toString(),
       change: { value: 0, type: 'neutral' as const, period: 'from last month' },
       icon: <RectangleStackIcon className="h-6 w-6" />,
     },
     {
       title: 'Upcoming Bills',
-      value: '0',
+      value: dashboardStats.upcomingBills.toString(),
       change: { value: 0, type: 'neutral' as const, period: 'next 7 days' },
       icon: <ClockIcon className="h-6 w-6" />,
     },
     {
       title: 'Trials Ending',
-      value: '0',
+      value: dashboardStats.trialEnding.toString(),
       change: { value: 0, type: 'neutral' as const, period: 'this month' },
       icon: <ExclamationTriangleIcon className="h-6 w-6" />,
     },
-  ];
+  ] : [];
 
-  // Mock chart data
-  const monthlySpendingData = [
-    { name: 'Jan', value: 0 },
-    { name: 'Feb', value: 0 },
-    { name: 'Mar', value: 0 },
-    { name: 'Apr', value: 0 },
-    { name: 'May', value: 0 },
-    { name: 'Jun', value: 0 },
-  ];
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const categoryData = [
-    { name: 'Entertainment', value: 0, color: '#FF6B35' },
-    { name: 'Productivity', value: 0, color: '#4ECDC4' },
-    { name: 'Development', value: 0, color: '#45B7D1' },
-    { name: 'Design', value: 0, color: '#96CEB4' },
-  ];
-
-  const upcomingBills = [
-    // Mock empty data - would be populated from API
-  ];
-
-  const recentActivity = [
-    // Mock empty data - would be populated from API
-  ];
+  if (error) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600">{error}</p>
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="mt-4"
+            >
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -142,17 +189,37 @@ const DashboardPage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <EmptyState
-                icon={<RectangleStackIcon className="h-12 w-12" />}
-                title="No subscriptions yet"
-                description="Start tracking your subscriptions to see your activity here."
-                action={
-                  <Button>
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Add your first subscription
-                  </Button>
-                }
-              />
+              {recentActivity.length === 0 ? (
+                <EmptyState
+                  icon={<RectangleStackIcon className="h-12 w-12" />}
+                  title="No subscriptions yet"
+                  description="Start tracking your subscriptions to see your activity here."
+                  action={
+                    <Button>
+                      <PlusIcon className="h-4 w-4 mr-2" />
+                      Add your first subscription
+                    </Button>
+                  }
+                />
+              ) : (
+                <div className="space-y-4">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: activity.categoryColor }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{activity.title}</p>
+                        <p className="text-sm text-gray-600">{activity.description}</p>
+                      </div>
+                      <div className="text-xs text-gray-500 flex-shrink-0">
+                        {new Date(activity.timestamp).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -168,21 +235,30 @@ const DashboardPage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center">
-              <DonutChart data={categoryData} size={200} />
-              <div className="mt-4 space-y-2 w-full">
-                {categoryData.map((category, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full border border-black"
-                        style={{ backgroundColor: category.color }}
-                      />
-                      <span className="text-sm font-medium">{category.name}</span>
-                    </div>
-                    <span className="text-sm text-gray-600">${category.value}</span>
+              {categoryData.length > 0 ? (
+                <>
+                  <DonutChart data={categoryData} size={200} />
+                  <div className="mt-4 space-y-2 w-full">
+                    {categoryData.map((category, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full border border-black"
+                            style={{ backgroundColor: category.color }}
+                          />
+                          <span className="text-sm font-medium">{category.name}</span>
+                        </div>
+                        <span className="text-sm text-gray-600">${category.value.toFixed(2)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <div className="text-center py-6">
+                  <ChartBarIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">No spending data yet</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -205,13 +281,21 @@ const DashboardPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {upcomingBills.map((bill: any, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div>
-                        <p className="font-medium">{bill.name}</p>
-                        <p className="text-sm text-gray-600">{bill.date}</p>
+                  {upcomingBills.map((bill) => (
+                    <div key={bill.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: bill.categoryColor }}
+                        />
+                        <div>
+                          <p className="font-medium">{bill.name}</p>
+                          <p className="text-sm text-gray-600">
+                            {new Date(bill.date).toLocaleDateString()} - {bill.categoryName}
+                          </p>
+                        </div>
                       </div>
-                      <Badge variant="warning">${bill.amount}</Badge>
+                      <Badge variant="warning">${bill.amount.toFixed(2)}</Badge>
                     </div>
                   ))}
                 </div>
@@ -248,10 +332,16 @@ const DashboardPage: React.FC = () => {
             <CardContent>
               <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
                 <h4 className="font-medium text-gray-900 mb-2">
-                  Start tracking your subscriptions
+                  {dashboardStats?.activeSubscriptions === 0 
+                    ? "Start tracking your subscriptions"
+                    : "Your subscription overview"
+                  }
                 </h4>
                 <p className="text-sm text-gray-600 mb-3">
-                  Add your first subscription to start getting insights about your spending patterns.
+                  {dashboardStats?.activeSubscriptions === 0 
+                    ? "Add your first subscription to start getting insights about your spending patterns."
+                    : `You have ${dashboardStats?.activeSubscriptions} active subscriptions costing $${dashboardStats?.totalMonthlyCost.toFixed(2)} per month.`
+                  }
                 </p>
                 <Button variant="link" className="p-0 h-auto text-orange-600">
                   Learn more

@@ -167,4 +167,38 @@ public class NotificationDto
     public string Message { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public bool IsRead { get; set; }
+}
+
+public class MonthlySpendingDto
+{
+    public string Name { get; set; } = string.Empty;
+    public decimal Value { get; set; }
+}
+
+public class CategorySpendingDto
+{
+    public string Name { get; set; } = string.Empty;
+    public decimal Value { get; set; }
+    public string Color { get; set; } = string.Empty;
+}
+
+public class UpcomingBillDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = string.Empty;
+    public DateTime Date { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+    public string CategoryColor { get; set; } = string.Empty;
+}
+
+public class RecentActivityDto
+{
+    public int Id { get; set; }
+    public string Type { get; set; } = string.Empty; // "created", "updated", "cancelled"
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public string CategoryColor { get; set; } = string.Empty;
 } 
