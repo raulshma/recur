@@ -8,6 +8,7 @@ import {
   PlusIcon,
   ArrowTrendingUpIcon,
 } from '@heroicons/react/24/outline';
+import { Button } from '@/components/ui/button';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -80,10 +81,13 @@ const DashboardPage: React.FC = () => {
               Here's an overview of your subscriptions and upcoming bills.
             </p>
           </div>
-          <button className="btn-primary flex items-center space-x-2">
+          <Button className="btn-primary flex items-center space-x-2">
             <PlusIcon className="h-5 w-5" />
             <span>Add Subscription</span>
-          </button>
+          </Button>
+          {/* <button className="btn-primary flex items-center space-x-2">
+
+          </button> */}
         </div>
       </div>
 
@@ -118,7 +122,7 @@ const DashboardPage: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
               <button className="btn-ghost text-sm">View all</button>
             </div>
-            
+
             <div className="text-center py-12">
               <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
                 <RectangleStackIcon className="h-8 w-8 text-gray-400" />
@@ -147,14 +151,14 @@ const DashboardPage: React.FC = () => {
                 </div>
                 <span className="text-sm font-medium text-gray-900">Add Subscription</span>
               </button>
-              
+
               <button className="w-full flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-success-300 hover:bg-success-50 transition-colors duration-200 text-left">
                 <div className="w-8 h-8 bg-success-100 text-success-600 rounded-lg flex items-center justify-center">
                   <ArrowTrendingUpIcon className="h-4 w-4" />
                 </div>
                 <span className="text-sm font-medium text-gray-900">View Analytics</span>
               </button>
-              
+
               <button className="w-full flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-warning-300 hover:bg-warning-50 transition-colors duration-200 text-left">
                 <div className="w-8 h-8 bg-warning-100 text-warning-600 rounded-lg flex items-center justify-center">
                   <ClockIcon className="h-4 w-4" />
