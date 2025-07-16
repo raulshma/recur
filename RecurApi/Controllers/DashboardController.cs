@@ -294,6 +294,308 @@ public class DashboardController : ControllerBase
 
         return Ok(recentSubscriptions);
     }
+
+    [HttpGet("analytics/overview")]
+    public async Task<ActionResult<AnalyticsOverviewDto>> GetAnalyticsOverview([FromQuery] string timeRange = "12months")
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var currentDate = DateTime.UtcNow;
+        var startDate = timeRange switch
+        {
+            "3months" => currentDate.AddMonths(-3),
+            "6months" => currentDate.AddMonths(-6),
+            "12months" => currentDate.AddMonths(-12),
+            "24months" => currentDate.AddMonths(-24),
+            _ => currentDate.AddMonths(-12)
+        };
+
+        var subscriptions = await _context.Subscriptions
+            .Where(s => s.UserId == userId && s.CreatedAt >= startDate)
+            .Include(s => s.Category)
+            .ToListAsync();
+
+        var activeSubscriptions = subscriptions.Where(s => s.IsActive).ToList();
+        var totalSpent = subscriptions.Sum(s => s.GetMonthlyCost() * 
+            (decimal)Math.Max(1, (currentDate - s.CreatedAt).TotalDays / 30.44)); // Average days per month
+
+        var monthlyAverage = activeSubscriptions.Sum(s => s.GetMonthlyCost());
+        
+        // Calculate savings potential (inactive subscriptions that were recently active)
+        var recentlyInactive = subscriptions
+            .Where(s => !s.IsActive && s.CancellationDate.HasValue && 
+                       s.CancellationDate.Value >= currentDate.AddMonths(-1))
+            .Sum(s => s.GetMonthlyCost());
+
+        var overview = new AnalyticsOverviewDto
+        {
+            TotalSpent = totalSpent,
+            MonthlyAverage = monthlyAverage,
+            ActiveSubscriptions = activeSubscriptions.Count,
+            SavingsPotential = recentlyInactive,
+            TimeRange = timeRange
+        };
+
+        return Ok(overview);
+    }
+
+    [HttpGet("analytics/monthly-spending-extended")]
+    public async Task<ActionResult<IEnumerable<MonthlySpendingDto>>> GetExtendedMonthlySpending([FromQuery] string timeRange = "12months")
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var months = timeRange switch
+        {
+            "3months" => 3,
+            "6months" => 6,
+            "12months" => 12,
+            "24months" => 24,
+            _ => 12
+        };
+
+        var subscriptions = await _context.Subscriptions
+            .Where(s => s.UserId == userId)
+            .ToListAsync();
+
+        var monthlyData = new List<MonthlySpendingDto>();
+        var currentDate = DateTime.UtcNow;
+
+        for (int i = months - 1; i >= 0; i--)
+        {
+            var targetDate = currentDate.AddMonths(-i);
+            var monthName = targetDate.ToString("MMM");
+            
+            var activeSubscriptions = subscriptions
+                .Where(s => s.CreatedAt <= targetDate.AddMonths(1).AddDays(-1) && 
+                           (!s.CancellationDate.HasValue || s.CancellationDate.Value >= targetDate))
+                .ToList();
+
+            var monthlySpending = activeSubscriptions.Sum(s => s.GetMonthlyCost());
+
+            monthlyData.Add(new MonthlySpendingDto
+            {
+                Name = monthName,
+                Value = monthlySpending
+            });
+        }
+
+        return Ok(monthlyData);
+    }
+
+    [HttpGet("analytics/yearly-comparison")]
+    public async Task<ActionResult<IEnumerable<YearlyComparisonDto>>> GetYearlyComparison()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var subscriptions = await _context.Subscriptions
+            .Where(s => s.UserId == userId)
+            .ToListAsync();
+
+        var currentYear = DateTime.UtcNow.Year;
+        var yearlyData = new List<YearlyComparisonDto>();
+
+        for (int year = currentYear - 2; year <= currentYear; year++)
+        {
+            var yearStart = new DateTime(year, 1, 1);
+            var yearEnd = new DateTime(year, 12, 31);
+
+            var yearlySpending = subscriptions
+                .Where(s => s.CreatedAt <= yearEnd && 
+                           (!s.CancellationDate.HasValue || s.CancellationDate.Value >= yearStart))
+                .Sum(s => s.GetMonthlyCost() * 12); // Annualized
+
+            yearlyData.Add(new YearlyComparisonDto
+            {
+                Year = year.ToString(),
+                Value = yearlySpending
+            });
+        }
+
+        return Ok(yearlyData);
+    }
+
+    [HttpGet("analytics/top-subscriptions")]
+    public async Task<ActionResult<IEnumerable<TopSubscriptionDto>>> GetTopSubscriptions()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var subscriptions = await _context.Subscriptions
+            .Where(s => s.UserId == userId && s.IsActive)
+            .Include(s => s.Category)
+            .OrderByDescending(s => s.Cost)
+            .Take(10)
+            .ToListAsync();
+
+        var topSubscriptions = subscriptions
+            .Select(s => new TopSubscriptionDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Cost = s.GetMonthlyCost(),
+                CategoryName = s.Category.Name,
+                CategoryColor = s.Category.Color,
+                BillingCycle = s.BillingCycle.ToString(),
+                Trend = "stable" // Could be enhanced with historical data
+            })
+            .ToList();
+
+        return Ok(topSubscriptions);
+    }
+
+    [HttpGet("analytics/insights")]
+    public async Task<ActionResult<IEnumerable<InsightDto>>> GetInsights()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var subscriptions = await _context.Subscriptions
+            .Where(s => s.UserId == userId)
+            .Include(s => s.Category)
+            .ToListAsync();
+
+        var insights = new List<InsightDto>();
+        var currentDate = DateTime.UtcNow;
+
+        // Check for duplicate categories
+        var categoryGroups = subscriptions
+            .Where(s => s.IsActive)
+            .GroupBy(s => s.Category.Name)
+            .Where(g => g.Count() > 1)
+            .ToList();
+
+        foreach (var group in categoryGroups)
+        {
+            var potentialSavings = group.Skip(1).Sum(s => s.GetMonthlyCost());
+            insights.Add(new InsightDto
+            {
+                Type = "warning",
+                Title = $"Multiple {group.Key} Services",
+                Description = $"You have {group.Count()} active {group.Key.ToLower()} subscriptions. Consider consolidating.",
+                Savings = potentialSavings,
+                Action = "Review Services"
+            });
+        }
+
+        // Check for expensive subscriptions
+        var expensiveSubscriptions = subscriptions
+            .Where(s => s.IsActive && s.GetMonthlyCost() > 50)
+            .ToList();
+
+        if (expensiveSubscriptions.Any())
+        {
+            insights.Add(new InsightDto
+            {
+                Type = "info",
+                Title = "High-Cost Subscriptions",
+                Description = $"You have {expensiveSubscriptions.Count} subscriptions over $50/month.",
+                Savings = 0,
+                Action = "Review Pricing"
+            });
+        }
+
+        // Check for trials ending soon
+        var endingTrials = subscriptions
+            .Where(s => s.IsActive && s.IsTrial && s.TrialEndDate.HasValue &&
+                       s.TrialEndDate.Value <= currentDate.AddDays(7))
+            .ToList();
+
+        if (endingTrials.Any())
+        {
+            insights.Add(new InsightDto
+            {
+                Type = "warning",
+                Title = "Trials Ending Soon",
+                Description = $"{endingTrials.Count} trial subscriptions are ending within 7 days.",
+                Savings = endingTrials.Sum(s => s.GetMonthlyCost()),
+                Action = "Review Trials"
+            });
+        }
+
+        return Ok(insights.Take(5));
+    }
+
+    [HttpGet("analytics/spending-patterns")]
+    public async Task<ActionResult<SpendingPatternsDto>> GetSpendingPatterns()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var subscriptions = await _context.Subscriptions
+            .Where(s => s.UserId == userId)
+            .ToListAsync();
+
+        var currentDate = DateTime.UtcNow;
+
+        // Most active day (most common billing day)
+        var billingDays = subscriptions
+            .Where(s => s.IsActive)
+            .GroupBy(s => s.NextBillingDate.Day)
+            .OrderByDescending(g => g.Count())
+            .FirstOrDefault();
+
+        // Average service life
+        var canceledSubscriptions = subscriptions
+            .Where(s => s.CancellationDate.HasValue)
+            .ToList();
+
+        var averageServiceLife = canceledSubscriptions.Any() 
+            ? canceledSubscriptions.Average(s => (s.CancellationDate!.Value - s.CreatedAt).TotalDays / 30.44)
+            : 0;
+
+        // Cancellation rate (within 3 months)
+        var recentSubscriptions = subscriptions
+            .Where(s => s.CreatedAt >= currentDate.AddMonths(-3))
+            .ToList();
+
+        var cancellationRate = recentSubscriptions.Any()
+            ? (double)recentSubscriptions.Count(s => s.CancellationDate.HasValue) / recentSubscriptions.Count * 100
+            : 0;
+
+        // Peak spending month
+        var monthlySpending = new Dictionary<int, decimal>();
+        for (int month = 1; month <= 12; month++)
+        {
+            var monthSubscriptions = subscriptions
+                .Where(s => s.CreatedAt.Month == month || 
+                           (s.NextBillingDate.Month == month && s.IsActive))
+                .ToList();
+            monthlySpending[month] = monthSubscriptions.Sum(s => s.GetMonthlyCost());
+        }
+
+        var peakMonth = monthlySpending.OrderByDescending(kvp => kvp.Value).FirstOrDefault();
+
+        var patterns = new SpendingPatternsDto
+        {
+            MostActiveDay = billingDays?.Key ?? 15,
+            AverageServiceLifeMonths = averageServiceLife,
+            CancellationRate = cancellationRate,
+            PeakSpendingMonth = new DateTime(currentDate.Year, peakMonth.Key, 1).ToString("MMMM")
+        };
+
+        return Ok(patterns);
+    }
 }
 
 // Extension method for calculating monthly cost

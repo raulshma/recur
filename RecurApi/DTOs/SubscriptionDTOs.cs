@@ -201,4 +201,47 @@ public class RecentActivityDto
     public string Description { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public string CategoryColor { get; set; } = string.Empty;
+}
+
+public class AnalyticsOverviewDto
+{
+    public decimal TotalSpent { get; set; }
+    public decimal MonthlyAverage { get; set; }
+    public int ActiveSubscriptions { get; set; }
+    public decimal SavingsPotential { get; set; }
+    public string TimeRange { get; set; } = string.Empty;
+}
+
+public class YearlyComparisonDto
+{
+    public string Year { get; set; } = string.Empty;
+    public decimal Value { get; set; }
+}
+
+public class TopSubscriptionDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public decimal Cost { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+    public string CategoryColor { get; set; } = string.Empty;
+    public string BillingCycle { get; set; } = string.Empty;
+    public string Trend { get; set; } = string.Empty; // "up", "down", "stable"
+}
+
+public class InsightDto
+{
+    public string Type { get; set; } = string.Empty; // "warning", "info", "success"
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public decimal Savings { get; set; }
+    public string Action { get; set; } = string.Empty;
+}
+
+public class SpendingPatternsDto
+{
+    public int MostActiveDay { get; set; }
+    public double AverageServiceLifeMonths { get; set; }
+    public double CancellationRate { get; set; }
+    public string PeakSpendingMonth { get; set; } = string.Empty;
 } 

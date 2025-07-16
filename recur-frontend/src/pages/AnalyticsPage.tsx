@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { analyticsApi, type AnalyticsOverview, type MonthlySpending, type CategorySpending, type YearlyComparison, type TopSubscription, type Insight, type SpendingPatterns } from '../api/analytics';
 import {
   ChartBarIcon,
   CurrencyDollarIcon,
@@ -28,126 +29,88 @@ import { EmptyState } from '@/components/ui/empty-state';
 const AnalyticsPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState('12months');
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - in a real app this would come from your API
-  const overviewStats = [
+  // State for dynamic data
+  const [analyticsOverview, setAnalyticsOverview] = useState<AnalyticsOverview | null>(null);
+  const [monthlySpendingData, setMonthlySpendingData] = useState<MonthlySpending[]>([]);
+  const [categoryData, setCategoryData] = useState<CategorySpending[]>([]);
+  const [yearlyComparisonData, setYearlyComparisonData] = useState<YearlyComparison[]>([]);
+  const [topSubscriptions, setTopSubscriptions] = useState<TopSubscription[]>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [spendingPatterns, setSpendingPatterns] = useState<SpendingPatterns | null>(null);
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [timeRange]);
+
+  const fetchAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [overview, monthlySpending, categorySpending, yearlyComparison, topSubs, analyticsInsights, patterns] = await Promise.all([
+        analyticsApi.getOverview(timeRange),
+        analyticsApi.getExtendedMonthlySpending(timeRange),
+        analyticsApi.getCategorySpending(),
+        analyticsApi.getYearlyComparison(),
+        analyticsApi.getTopSubscriptions(),
+        analyticsApi.getInsights(),
+        analyticsApi.getSpendingPatterns(),
+      ]);
+
+      setAnalyticsOverview(overview);
+      setMonthlySpendingData(monthlySpending);
+      setCategoryData(categorySpending);
+      setYearlyComparisonData(yearlyComparison);
+      setTopSubscriptions(topSubs);
+      setInsights(analyticsInsights);
+      setSpendingPatterns(patterns);
+    } catch (err) {
+      console.error('Failed to fetch analytics data:', err);
+      setError('Failed to load analytics data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Create stats array from API data
+  const overviewStats = analyticsOverview ? [
     {
       title: 'Total Spent',
-      value: '$2,847.50',
-      change: { value: 12.5, type: 'increase' as const, period: 'from last month' },
+      value: `$${analyticsOverview.totalSpent.toFixed(2)}`,
+      change: { value: 0, type: 'neutral' as const, period: 'from last month' },
       icon: <CurrencyDollarIcon className="h-6 w-6" />,
     },
     {
       title: 'Monthly Average',
-      value: '$237.29',
-      change: { value: 8.2, type: 'increase' as const, period: 'from last month' },
+      value: `$${analyticsOverview.monthlyAverage.toFixed(2)}`,
+      change: { value: 0, type: 'neutral' as const, period: 'from last month' },
       icon: <ArrowTrendingUpIcon className="h-6 w-6" />,
     },
     {
       title: 'Active Subscriptions',
-      value: '14',
-      change: { value: 2, type: 'increase' as const, period: 'this month' },
+      value: analyticsOverview.activeSubscriptions.toString(),
+      change: { value: 0, type: 'neutral' as const, period: 'this month' },
       icon: <ArrowPathIcon className="h-6 w-6" />,
     },
     {
       title: 'Savings Potential',
-      value: '$89.99',
-      change: { value: 15.3, type: 'decrease' as const, period: 'unused services' },
+      value: `$${analyticsOverview.savingsPotential.toFixed(2)}`,
+      change: { value: 0, type: 'neutral' as const, period: 'unused services' },
       icon: <BanknotesIcon className="h-6 w-6" />,
     },
-  ];
+  ] : [];
 
-  // Monthly spending trend data
-  const monthlySpendingData = [
-    { name: 'Jan', value: 185.50 },
-    { name: 'Feb', value: 201.25 },
-    { name: 'Mar', value: 189.75 },
-    { name: 'Apr', value: 245.80 },
-    { name: 'May', value: 267.90 },
-    { name: 'Jun', value: 234.60 },
-    { name: 'Jul', value: 289.45 },
-    { name: 'Aug', value: 312.20 },
-    { name: 'Sep', value: 298.75 },
-    { name: 'Oct', value: 276.30 },
-    { name: 'Nov', value: 254.85 },
-    { name: 'Dec', value: 237.29 },
-  ];
-
-  // Category breakdown data
-  const categoryData = [
-    { name: 'Entertainment', value: 89.97, color: '#FF6B35' },
-    { name: 'Productivity', value: 67.98, color: '#4ECDC4' },
-    { name: 'Development', value: 45.99, color: '#45B7D1' },
-    { name: 'Design', value: 33.35, color: '#96CEB4' },
-    { name: 'Cloud Storage', value: 25.99, color: '#FFEAA7' },
-    { name: 'Communication', value: 19.99, color: '#DDA0DD' },
-  ];
-
-  // Yearly comparison data
-  const yearlyComparisonData = [
+  // Transform yearly comparison data for chart
+  const yearlyComparisonChartData = yearlyComparisonData.length > 0 ? [
     {
       name: 'Yearly Comparison',
-      data: [
-        { name: '2022', value: 2156.80 },
-        { name: '2023', value: 2847.50 },
-        { name: '2024', value: 3124.75 },
-      ],
+      data: yearlyComparisonData.map(item => ({ name: item.year, value: item.value })),
       color: '#FF6B35',
     },
-  ];
-
-  // Top subscriptions by cost
-  const topSubscriptions = [
-    { name: 'Adobe Creative Cloud', cost: 52.99, category: 'Design', trend: 'stable' },
-    { name: 'Netflix Premium', cost: 19.99, category: 'Entertainment', trend: 'up' },
-    { name: 'GitHub Pro', cost: 19.00, category: 'Development', trend: 'stable' },
-    { name: 'Spotify Premium', cost: 15.99, category: 'Entertainment', trend: 'stable' },
-    { name: 'Dropbox Plus', cost: 11.99, category: 'Cloud Storage', trend: 'down' },
-  ];
-
-  // Upcoming renewals
-  const upcomingRenewals = [
-    { name: 'Adobe Creative Cloud', cost: 52.99, date: '2024-01-15', daysLeft: 3 },
-    { name: 'Netflix Premium', cost: 19.99, date: '2024-01-18', daysLeft: 6 },
-    { name: 'Spotify Premium', cost: 15.99, date: '2024-01-22', daysLeft: 10 },
-    { name: 'GitHub Pro', cost: 19.00, date: '2024-01-25', daysLeft: 13 },
-  ];
-
-  // Cost optimization insights
-  const insights = [
-    {
-      type: 'warning',
-      title: 'Duplicate Services',
-      description: 'You have 2 music streaming services. Consider canceling one to save $15.99/month.',
-      savings: 15.99,
-      action: 'Review Services',
-    },
-    {
-      type: 'info',
-      title: 'Annual Billing Savings',
-      description: 'Switch to annual billing for 3 services to save $47.88 per year.',
-      savings: 47.88,
-      action: 'Switch to Annual',
-    },
-    {
-      type: 'success',
-      title: 'Unused Trial',
-      description: 'Your Figma trial ends in 5 days. Decide whether to continue or cancel.',
-      savings: 0,
-      action: 'Review Trial',
-    },
-  ];
-
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'up':
-        return <ArrowTrendingUpIcon className="h-4 w-4 text-green-600" />;
-      case 'down':
-        return <ArrowTrendingDownIcon className="h-4 w-4 text-red-600" />;
-      default:
-        return <div className="h-4 w-4" />;
-    }
-  };
+  ] : [];
 
   const getInsightIcon = (type: string) => {
     switch (type) {
@@ -155,6 +118,7 @@ const AnalyticsPage: React.FC = () => {
         return <ExclamationTriangleIcon className="h-5 w-5 text-orange-500" />;
       case 'success':
         return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
+      case 'info':
       default:
         return <ClockIcon className="h-5 w-5 text-blue-500" />;
     }
@@ -166,10 +130,55 @@ const AnalyticsPage: React.FC = () => {
         return 'warning' as const;
       case 'success':
         return 'success' as const;
+      case 'info':
       default:
-        return 'default' as const;
+        return 'secondary' as const;
     }
   };
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'up':
+        return <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />;
+      case 'down':
+        return <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />;
+      case 'stable':
+      default:
+        return <div className="h-4 w-4 bg-gray-400 rounded-full" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading analytics...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600">{error}</p>
+            <Button 
+              onClick={() => fetchAnalyticsData()} 
+              className="mt-4"
+            >
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -178,22 +187,22 @@ const AnalyticsPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
           <p className="text-gray-600 mt-1">
-            Insights and trends for your subscription spending.
+            Deep insights into your subscription spending patterns and trends.
           </p>
         </div>
         <div className="flex gap-3">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="3months">Last 3 months</SelectItem>
               <SelectItem value="6months">Last 6 months</SelectItem>
               <SelectItem value="12months">Last 12 months</SelectItem>
-              <SelectItem value="2years">Last 2 years</SelectItem>
+              <SelectItem value="24months">Last 24 months</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm">
+          <Button variant="outline">
             <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
             Export
           </Button>
@@ -214,16 +223,16 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Main Analytics Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
         </TabsList>
 
+        {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Monthly Spending Chart */}
             <div className="lg:col-span-2">
               <Card>
@@ -233,250 +242,224 @@ const AnalyticsPage: React.FC = () => {
                     Monthly Spending Trend
                   </CardTitle>
                   <CardDescription>
-                    Your subscription costs over the last 12 months
+                    Your subscription costs over the selected period
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <BarChart data={monthlySpendingData} height={300} showValues />
+                  {monthlySpendingData.length > 0 ? (
+                    <BarChart data={monthlySpendingData} height={300} showValues />
+                  ) : (
+                    <EmptyState
+                      icon={<ChartBarIcon className="h-12 w-12" />}
+                      title="No spending data"
+                      description="Start adding subscriptions to see your spending trends."
+                    />
+                  )}
                 </CardContent>
               </Card>
             </div>
 
             {/* Category Breakdown */}
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Spending by Category</CardTitle>
-                  <CardDescription>
-                    Current month breakdown
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center">
-                  <DonutChart data={categoryData} size={200} />
-                  <div className="mt-4 space-y-2 w-full">
-                    {categoryData.map((category, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full border border-black"
-                            style={{ backgroundColor: category.color }}
-                          />
-                          <span className="text-sm font-medium">{category.name}</span>
-                        </div>
-                        <span className="text-sm text-gray-600">${category.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Top Subscriptions and Upcoming Renewals */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Top Subscriptions */}
             <Card>
               <CardHeader>
-                <CardTitle>Top Subscriptions</CardTitle>
+                <CardTitle>Spending by Category</CardTitle>
                 <CardDescription>
-                  Highest cost services this month
+                  How your money is distributed
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {topSubscriptions.map((sub, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-bold">{index + 1}</span>
+              <CardContent className="flex flex-col items-center">
+                {categoryData.length > 0 ? (
+                  <>
+                    <DonutChart data={categoryData} size={200} />
+                    <div className="mt-4 space-y-2 w-full">
+                      {categoryData.map((category, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full border border-black"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            <span className="text-sm font-medium">{category.name}</span>
+                          </div>
+                          <span className="text-sm text-gray-600">${category.value.toFixed(2)}</span>
                         </div>
-                        <div>
-                          <p className="font-medium">{sub.name}</p>
-                          <p className="text-sm text-gray-600">{sub.category}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">${sub.cost}</span>
-                        {getTrendIcon(sub.trend)}
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Upcoming Renewals */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarDaysIcon className="h-5 w-5" />
-                  Upcoming Renewals
-                </CardTitle>
-                <CardDescription>
-                  Next 30 days
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {upcomingRenewals.map((renewal, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div>
-                        <p className="font-medium">{renewal.name}</p>
-                        <p className="text-sm text-gray-600">
-                          {new Date(renewal.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">${renewal.cost}</p>
-                        <Badge variant={renewal.daysLeft <= 7 ? 'warning' : 'default'}>
-                          {renewal.daysLeft} days
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                  </>
+                ) : (
+                  <EmptyState
+                    icon={<ChartBarIcon className="h-8 w-8" />}
+                    title="No category data"
+                    description="Add subscriptions to see category breakdown."
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
 
-        <TabsContent value="trends" className="space-y-6">
+          {/* Top Subscriptions */}
           <Card>
             <CardHeader>
-              <CardTitle>Yearly Spending Comparison</CardTitle>
+              <CardTitle>Top Subscriptions by Cost</CardTitle>
               <CardDescription>
-                Compare your spending across different years
+                Your most expensive active subscriptions
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AreaChart
-                datasets={yearlyComparisonData}
-                height={400}
-                showGrid
-                showAxes
-                showLegend
-              />
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <MetricCard
-              title="Growth Rate"
-              value="32.1%"
-              change={{ value: 5.2, period: "vs last year" }}
-              trend="up"
-              icon={<ArrowTrendingUpIcon className="h-6 w-6" />}
-            />
-            <MetricCard
-              title="Average Monthly"
-              value="$237.29"
-              change={{ value: 12.5, period: "vs last year" }}
-              trend="up"
-              icon={<CurrencyDollarIcon className="h-6 w-6" />}
-            />
-            <MetricCard
-              title="Peak Month"
-              value="August"
-              change={{ value: 0, period: "$312.20" }}
-              trend="neutral"
-              icon={<ChartBarIcon className="h-6 w-6" />}
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="categories" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Category Spending</CardTitle>
-                <CardDescription>
-                  Monthly spending by category
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <BarChart 
-                  data={categoryData.map(cat => ({ name: cat.name, value: cat.value, color: cat.color }))} 
-                  height={300} 
-                  showValues 
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Category Details</CardTitle>
-                <CardDescription>
-                  Breakdown and trends
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+              {topSubscriptions.length > 0 ? (
                 <div className="space-y-4">
-                  {categoryData.map((category, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-4 h-4 rounded-full border border-black"
-                            style={{ backgroundColor: category.color }}
-                          />
-                          <span className="font-medium">{category.name}</span>
+                  {topSubscriptions.map((subscription, index) => (
+                    <div key={subscription.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="text-lg font-bold text-gray-500">#{index + 1}</div>
+                        <div 
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: subscription.categoryColor }}
+                        />
+                        <div>
+                          <p className="font-medium">{subscription.name}</p>
+                          <p className="text-sm text-gray-600">{subscription.categoryName} - {subscription.billingCycle}</p>
                         </div>
-                        <span className="font-medium">${category.value}</span>
                       </div>
-                      <Progress 
-                        value={(category.value / Math.max(...categoryData.map(c => c.value))) * 100} 
-                        className="h-2"
-                      />
-                      <p className="text-sm text-gray-600">
-                        {((category.value / categoryData.reduce((sum, c) => sum + c.value, 0)) * 100).toFixed(1)}% of total spending
-                      </p>
+                      <div className="flex items-center gap-2">
+                        {getTrendIcon(subscription.trend)}
+                        <span className="font-bold">${subscription.cost.toFixed(2)}/mo</span>
+                      </div>
                     </div>
                   ))}
                 </div>
+              ) : (
+                <EmptyState
+                  icon={<CurrencyDollarIcon className="h-12 w-12" />}
+                  title="No subscriptions"
+                  description="Add subscriptions to see your top expenses."
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Trends Tab */}
+        <TabsContent value="trends" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Yearly Comparison */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Yearly Comparison</CardTitle>
+                <CardDescription>
+                  Annual spending comparison over time
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {yearlyComparisonChartData.length > 0 ? (
+                  <BarChart 
+                    data={yearlyComparisonChartData[0].data} 
+                    height={300} 
+                    showValues 
+                  />
+                ) : (
+                  <EmptyState
+                    icon={<CalendarDaysIcon className="h-12 w-12" />}
+                    title="No yearly data"
+                    description="Need more historical data for yearly comparison."
+                  />
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Category Performance */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Category Performance</CardTitle>
+                <CardDescription>
+                  Spending breakdown with percentages
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {categoryData.length > 0 ? (
+                  <div className="space-y-4">
+                    {categoryData.map((category, index) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            <span className="font-medium">{category.name}</span>
+                          </div>
+                          <span className="text-sm text-gray-600">${category.value.toFixed(2)}</span>
+                        </div>
+                        <Progress 
+                          value={(category.value / Math.max(...categoryData.map(c => c.value))) * 100} 
+                          className="h-2" 
+                        />
+                        <p className="text-xs text-gray-500">
+                          {((category.value / categoryData.reduce((sum, c) => sum + c.value, 0)) * 100).toFixed(1)}% of total spending
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon={<ChartBarIcon className="h-8 w-8" />}
+                    title="No category data"
+                    description="Add subscriptions to see performance metrics."
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
+        {/* Insights Tab */}
         <TabsContent value="insights" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Cost Optimization */}
             <Card>
               <CardHeader>
                 <CardTitle>Cost Optimization</CardTitle>
                 <CardDescription>
-                  Recommendations to reduce your spending
+                  Recommendations to save money
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {insights.map((insight, index) => (
-                    <div key={index} className="p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        {getInsightIcon(insight.type)}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-medium">{insight.title}</h4>
-                            <Badge variant={getInsightBadgeVariant(insight.type)}>
-                              {insight.type}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-3">{insight.description}</p>
-                          <div className="flex items-center justify-between">
-                            {insight.savings > 0 && (
-                              <span className="text-sm font-medium text-green-600">
-                                Save ${insight.savings}/month
-                              </span>
-                            )}
-                            <Button variant="outline" size="sm">
-                              {insight.action}
-                            </Button>
+                {insights.length > 0 ? (
+                  <div className="space-y-4">
+                    {insights.map((insight, index) => (
+                      <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          {getInsightIcon(insight.type)}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-medium">{insight.title}</h4>
+                              <Badge variant={getInsightBadgeVariant(insight.type)}>
+                                {insight.type}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-3">{insight.description}</p>
+                            <div className="flex items-center justify-between">
+                              {insight.savings > 0 && (
+                                <span className="text-sm font-medium text-green-600">
+                                  Save ${insight.savings.toFixed(2)}/month
+                                </span>
+                              )}
+                              <Button variant="outline" size="sm">
+                                {insight.action}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon={<ExclamationTriangleIcon className="h-12 w-12" />}
+                    title="No insights available"
+                    description="Add more subscriptions to get personalized insights."
+                  />
+                )}
               </CardContent>
             </Card>
 
@@ -489,31 +472,39 @@ const AnalyticsPage: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="font-medium mb-2">Most Active Day</h4>
-                    <p className="text-2xl font-bold text-blue-600">15th</p>
-                    <p className="text-sm text-gray-600">Most renewals happen mid-month</p>
+                {spendingPatterns ? (
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="font-medium mb-2">Most Active Day</h4>
+                      <p className="text-2xl font-bold text-blue-600">{spendingPatterns.mostActiveDay}th</p>
+                      <p className="text-sm text-gray-600">Most renewals happen on this day</p>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium mb-2">Average Service Life</h4>
+                      <p className="text-2xl font-bold text-green-600">{spendingPatterns.averageServiceLifeMonths.toFixed(1)} months</p>
+                      <p className="text-sm text-gray-600">How long you keep subscriptions</p>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium mb-2">Cancellation Rate</h4>
+                      <p className="text-2xl font-bold text-orange-600">{spendingPatterns.cancellationRate.toFixed(1)}%</p>
+                      <p className="text-sm text-gray-600">Services canceled within 3 months</p>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium mb-2">Peak Spending Month</h4>
+                      <p className="text-2xl font-bold text-purple-600">{spendingPatterns.peakSpendingMonth}</p>
+                      <p className="text-sm text-gray-600">When you spend the most</p>
+                    </div>
                   </div>
-                  
-                  <div>
-                    <h4 className="font-medium mb-2">Average Service Life</h4>
-                    <p className="text-2xl font-bold text-green-600">18 months</p>
-                    <p className="text-sm text-gray-600">How long you keep subscriptions</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium mb-2">Cancellation Rate</h4>
-                    <p className="text-2xl font-bold text-orange-600">12%</p>
-                    <p className="text-sm text-gray-600">Services canceled within 3 months</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium mb-2">Peak Spending Month</h4>
-                    <p className="text-2xl font-bold text-purple-600">August</p>
-                    <p className="text-sm text-gray-600">When you spend the most</p>
-                  </div>
-                </div>
+                ) : (
+                  <EmptyState
+                    icon={<ChartBarIcon className="h-12 w-12" />}
+                    title="No pattern data"
+                    description="Need more subscription history to analyze patterns."
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
