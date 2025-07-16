@@ -41,6 +41,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import type { Subscription } from '../types';
 
 const SubscriptionsPage: React.FC = () => {
@@ -62,7 +64,19 @@ const SubscriptionsPage: React.FC = () => {
     { id: 4, name: 'Design', color: '#96CEB4' },
   ];
 
-  const form = useForm({
+  // Form validation schema
+  const formSchema = z.object({
+    name: z.string().min(1, 'Service name is required'),
+    cost: z.string().min(1, 'Cost is required'),
+    billingCycle: z.string().min(1, 'Billing cycle is required'),
+    nextBillingDate: z.string().min(1, 'Next billing date is required'),
+    categoryId: z.string().min(1, 'Category is required'),
+    description: z.string().optional(),
+    website: z.string().optional(),
+  });
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       cost: '',
@@ -191,10 +205,36 @@ const SubscriptionsPage: React.FC = () => {
     },
   ];
 
-  const onSubmit = (data: any) => {
-    console.log('Form data:', data);
-    setIsAddDialogOpen(false);
-    form.reset();
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    try {
+      console.log('Form submission started');
+      console.log('Form data:', data);
+      
+      // Validate the data
+      const validatedData = formSchema.parse(data);
+      console.log('Validated data:', validatedData);
+      
+      // Here you would typically make an API call to save the subscription
+      // For now, we'll just log the data and close the dialog
+      
+      // Close dialog and reset form
+      setIsAddDialogOpen(false);
+      form.reset();
+      
+      console.log('Form submission completed successfully');
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      // Don't close the dialog if there's an error
+    }
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    console.log('Dialog open change:', open);
+    setIsAddDialogOpen(open);
+    if (!open) {
+      console.log('Dialog closing - resetting form');
+      form.reset();
+    }
   };
 
   const filteredSubscriptions = subscriptions.filter((sub) => {
@@ -235,9 +275,9 @@ const SubscriptionsPage: React.FC = () => {
             <FunnelIcon className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={handleDialogOpenChange}>
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={() => console.log('Add Subscription button clicked')}>
                 <PlusIcon className="h-4 w-4 mr-2" />
                 Add Subscription
               </Button>
@@ -250,7 +290,7 @@ const SubscriptionsPage: React.FC = () => {
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -503,7 +543,10 @@ const SubscriptionsPage: React.FC = () => {
               }
               action={
                 subscriptions.length === 0 ? (
-                  <Button onClick={() => setIsAddDialogOpen(true)}>
+                  <Button onClick={() => {
+                    console.log('Opening dialog from empty state');
+                    setIsAddDialogOpen(true);
+                  }}>
                     <PlusIcon className="h-4 w-4 mr-2" />
                     Add your first subscription
                   </Button>
