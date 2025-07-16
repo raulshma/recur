@@ -285,7 +285,7 @@ public class AuthController : ControllerBase
             await _context.SaveChangesAsync();
         }
 
-        return Ok(MapToUserSettingsDto(settings));
+        return Ok(MapToUserSettingsDto(settings, user));
     }
 
     [HttpPut("settings")]
@@ -324,10 +324,11 @@ public class AuthController : ControllerBase
         settings.DashboardLayout = dto.DashboardLayout;
         settings.UpdatedAt = DateTime.UtcNow;
 
-        // Sync currency with user profile to keep them consistent
-        if (user.Currency != dto.DefaultCurrency)
+        // Sync currency and budget limit with user profile to keep them consistent
+        if (user.Currency != dto.DefaultCurrency || user.BudgetLimit != dto.BudgetLimit)
         {
             user.Currency = dto.DefaultCurrency;
+            user.BudgetLimit = dto.BudgetLimit;
             await _userManager.UpdateAsync(user);
         }
 
@@ -451,12 +452,13 @@ public class AuthController : ControllerBase
             LastName = user.LastName,
             TimeZone = user.TimeZone,
             Currency = user.Currency,
+            BudgetLimit = user.BudgetLimit,
             CreatedAt = user.CreatedAt,
             LastLoginAt = user.LastLoginAt
         };
     }
 
-    private static UserSettingsDto MapToUserSettingsDto(UserSettings settings)
+    private static UserSettingsDto MapToUserSettingsDto(UserSettings settings, User user)
     {
         return new UserSettingsDto
         {
@@ -471,7 +473,8 @@ public class AuthController : ControllerBase
             DateFormat = settings.DateFormat,
             TimeZone = settings.TimeZone,
             Theme = settings.Theme,
-            DashboardLayout = settings.DashboardLayout
+            DashboardLayout = settings.DashboardLayout,
+            BudgetLimit = user.BudgetLimit
         };
     }
 } 

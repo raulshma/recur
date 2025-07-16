@@ -13,6 +13,7 @@ export interface UserSettings {
   timeZone: string;
   theme: string;
   dashboardLayout?: string;
+  budgetLimit?: number;
 }
 
 export interface UpdateProfileRequest {
@@ -36,6 +37,7 @@ export interface UpdateUserSettingsRequest {
   timeZone: string;
   theme: string;
   dashboardLayout?: string;
+  budgetLimit?: number;
 }
 
 export interface AuthResponse {

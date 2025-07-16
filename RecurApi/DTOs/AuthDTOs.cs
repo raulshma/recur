@@ -113,6 +113,7 @@ public class UserSettingsDto
     public string TimeZone { get; set; } = "UTC";
     public string Theme { get; set; } = "light";
     public string? DashboardLayout { get; set; }
+    public decimal? BudgetLimit { get; set; }
 }
 
 public class UpdateUserSettingsDto
@@ -142,4 +143,7 @@ public class UpdateUserSettingsDto
     public string Theme { get; set; } = "light";
     
     public string? DashboardLayout { get; set; }
+    
+    [Range(0, 999999.99)]
+    public decimal? BudgetLimit { get; set; }
 } 

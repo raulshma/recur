@@ -509,23 +509,37 @@ const SettingsPage: React.FC = () => {
 
                   <Separator />
 
-                  <div className="space-y-4">
-                    <Label>Default Currency</Label>
-                    <Select
-                      value={userSettings.defaultCurrency}
-                      onValueChange={(value) => handleNotificationChange('defaultCurrency', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SUPPORTED_CURRENCIES.map((currency) => (
-                          <SelectItem key={currency.value} value={currency.value}>
-                            {currency.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label>Default Currency</Label>
+                      <Select
+                        value={userSettings.defaultCurrency}
+                        onValueChange={(value) => handleNotificationChange('defaultCurrency', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SUPPORTED_CURRENCIES.map((currency) => (
+                            <SelectItem key={currency.value} value={currency.value}>
+                              {currency.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Monthly Budget Limit</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={userSettings.budgetLimit || ''}
+                        onChange={(e) => handleNotificationChange('budgetLimit', e.target.value ? parseFloat(e.target.value) : undefined)}
+                      />
+                      <p className="text-sm text-gray-600">Set a monthly spending limit for alerts</p>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
