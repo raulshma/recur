@@ -217,15 +217,18 @@ public class CurrencyController : ControllerBase
                 return BadRequest(new { error = "Maximum 50 conversions allowed per batch request" });
             }
 
-            var results = new List<CurrencyConversionResponseDto>();
-            var hasAnyErrors = false;
+            // Validate all conversions first and prepare batch request
+            var batchRequests = new List<BatchConversionRequest>();
+            var validationErrors = new List<(int index, CurrencyConversionResponseDto error)>();
 
-            foreach (var conversion in request.Conversions)
+            for (int i = 0; i < request.Conversions.Count; i++)
             {
+                var conversion = request.Conversions[i];
+                
                 // Validate individual conversion
                 if (conversion.Amount <= 0)
                 {
-                    results.Add(new CurrencyConversionResponseDto
+                    validationErrors.Add((i, new CurrencyConversionResponseDto
                     {
                         OriginalAmount = conversion.Amount,
                         ConvertedAmount = conversion.Amount,
@@ -237,15 +240,14 @@ public class CurrencyController : ControllerBase
                         Success = false,
                         HasError = true,
                         ErrorMessage = "Amount must be greater than zero"
-                    });
-                    hasAnyErrors = true;
+                    }));
                     continue;
                 }
 
                 if (string.IsNullOrWhiteSpace(conversion.FromCurrency) || conversion.FromCurrency.Length != 3 ||
                     string.IsNullOrWhiteSpace(conversion.ToCurrency) || conversion.ToCurrency.Length != 3)
                 {
-                    results.Add(new CurrencyConversionResponseDto
+                    validationErrors.Add((i, new CurrencyConversionResponseDto
                     {
                         OriginalAmount = conversion.Amount,
                         ConvertedAmount = conversion.Amount,
@@ -257,24 +259,50 @@ public class CurrencyController : ControllerBase
                         Success = false,
                         HasError = true,
                         ErrorMessage = "Currency codes must be 3-letter codes"
-                    });
-                    hasAnyErrors = true;
+                    }));
                     continue;
                 }
 
-                // Normalize currency codes
+                // Normalize currency codes and add to batch request
                 var fromCurrency = conversion.FromCurrency.Trim().ToUpperInvariant();
                 var toCurrency = conversion.ToCurrency.Trim().ToUpperInvariant();
 
-                try
+                batchRequests.Add(new BatchConversionRequest
                 {
-                    // Perform conversion
-                    var result = await _currencyConversionService.ConvertWithMetadataAsync(
-                        conversion.Amount, fromCurrency, toCurrency);
+                    Amount = conversion.Amount,
+                    FromCurrency = fromCurrency,
+                    ToCurrency = toCurrency,
+                    RequestId = i.ToString() // Track original index
+                });
+            }
 
-                    results.Add(new CurrencyConversionResponseDto
+            // Perform optimized batch conversion
+            var results = new List<CurrencyConversionResponseDto>();
+            var hasAnyErrors = validationErrors.Any();
+
+            try
+            {
+                // Use optimized batch conversion service
+                var batchResults = await _currencyConversionService.BatchConvertAsync(batchRequests);
+                
+                // Create results array with proper ordering
+                var orderedResults = new CurrencyConversionResponseDto[request.Conversions.Count];
+                
+                // Add validation errors first
+                foreach (var (index, error) in validationErrors)
+                {
+                    orderedResults[index] = error;
+                }
+                
+                // Add batch conversion results
+                for (int i = 0; i < batchResults.Count; i++)
+                {
+                    var result = batchResults[i];
+                    var originalIndex = int.Parse(batchRequests[i].RequestId!);
+                    
+                    orderedResults[originalIndex] = new CurrencyConversionResponseDto
                     {
-                        OriginalAmount = conversion.Amount,
+                        OriginalAmount = batchRequests[i].Amount,
                         ConvertedAmount = result.ConvertedAmount,
                         FromCurrency = result.FromCurrency,
                         ToCurrency = result.ToCurrency,
@@ -284,33 +312,46 @@ public class CurrencyController : ControllerBase
                         Success = !result.HasError,
                         HasError = result.HasError,
                         ErrorMessage = result.ErrorMessage
-                    });
+                    };
 
                     if (result.HasError)
                     {
                         hasAnyErrors = true;
                     }
                 }
-                catch (Exception ex)
+                
+                results = orderedResults.ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in optimized batch currency conversion");
+                
+                // Fallback to individual conversions if batch fails
+                results = new List<CurrencyConversionResponseDto>();
+                
+                foreach (var (index, error) in validationErrors)
                 {
-                    _logger.LogError(ex, "Error in batch conversion for {Amount} {FromCurrency} to {ToCurrency}", 
-                        conversion.Amount, fromCurrency, toCurrency);
-                    
+                    results.Add(error);
+                }
+                
+                foreach (var batchRequest in batchRequests)
+                {
                     results.Add(new CurrencyConversionResponseDto
                     {
-                        OriginalAmount = conversion.Amount,
-                        ConvertedAmount = conversion.Amount,
-                        FromCurrency = fromCurrency,
-                        ToCurrency = toCurrency,
+                        OriginalAmount = batchRequest.Amount,
+                        ConvertedAmount = batchRequest.Amount,
+                        FromCurrency = batchRequest.FromCurrency,
+                        ToCurrency = batchRequest.ToCurrency,
                         ExchangeRate = 1.0m,
                         RateTimestamp = DateTime.UtcNow,
                         IsStale = true,
                         Success = false,
                         HasError = true,
-                        ErrorMessage = "Conversion failed - using original amount"
+                        ErrorMessage = "Batch conversion failed - using original amount"
                     });
-                    hasAnyErrors = true;
                 }
+                
+                hasAnyErrors = true;
             }
 
             var batchResponse = new BatchCurrencyConversionResponseDto

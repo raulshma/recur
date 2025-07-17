@@ -13,7 +13,7 @@ public class ExchangeRateBackgroundService : BackgroundService
     private readonly TimeSpan _updateInterval = TimeSpan.FromHours(1); // Update every hour
     
     // Common currency pairs to warm cache
-    private readonly string[] _commonCurrencies = { "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR" };
+    private readonly string[] _commonCurrencies = {"USD", "INR" };
 
     public ExchangeRateBackgroundService(
         IServiceProvider serviceProvider,

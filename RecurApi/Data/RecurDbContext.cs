@@ -38,6 +38,10 @@ public class RecurDbContext : IdentityDbContext<User>
                   .HasForeignKey<UserSettings>(s => s.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
 
+            // Configure decimal properties with precision
+            entity.Property(u => u.BudgetLimit)
+                  .HasPrecision(10, 2);
+
             // Configure DateTime properties with database defaults
             entity.Property(u => u.CreatedAt)
                   .HasDefaultValueSql("GETUTCDATE()");
@@ -107,14 +111,27 @@ public class RecurDbContext : IdentityDbContext<User>
                   .HasDefaultValueSql("GETUTCDATE()");
         });
 
-        // Configure ExchangeRate properties
+        // Configure ExchangeRate properties with performance optimizations
         builder.Entity<ExchangeRate>(entity =>
         {
             entity.Property(e => e.Rate)
                   .HasPrecision(18, 8);
 
+            // Performance optimization: Primary composite index for fast lookups
             entity.HasIndex(e => new { e.FromCurrency, e.ToCurrency, e.ExpiresAt })
                   .HasDatabaseName("IX_ExchangeRate_Currencies_Expiry");
+
+            // Performance optimization: Additional index for cleanup operations
+            entity.HasIndex(e => e.ExpiresAt)
+                  .HasDatabaseName("IX_ExchangeRate_ExpiresAt");
+
+            // Performance optimization: Index for frequently used pairs analysis
+            entity.HasIndex(e => new { e.FromCurrency, e.Timestamp })
+                  .HasDatabaseName("IX_ExchangeRate_FromCurrency_Timestamp");
+
+            // Performance optimization: Index for source-based queries
+            entity.HasIndex(e => new { e.Source, e.Timestamp })
+                  .HasDatabaseName("IX_ExchangeRate_Source_Timestamp");
 
             // Configure DateTime properties with database defaults
             entity.Property(e => e.Timestamp)

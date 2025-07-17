@@ -15,11 +15,13 @@ public class DashboardController : ControllerBase
 {
     private readonly RecurDbContext _context;
     private readonly ICurrencyConversionService _currencyConversionService;
+    private readonly ILogger<DashboardController> _logger;
 
-    public DashboardController(RecurDbContext context, ICurrencyConversionService currencyConversionService)
+    public DashboardController(RecurDbContext context, ICurrencyConversionService currencyConversionService, ILogger<DashboardController> logger)
     {
         _context = context;
         _currencyConversionService = currencyConversionService;
+        _logger = logger;
     }
 
     [HttpGet("stats")]
@@ -50,24 +52,101 @@ public class DashboardController : ControllerBase
         var currencyBreakdowns = new List<CurrencyBreakdown>();
         decimal totalConvertedMonthlyCost = 0;
 
-        // Process each currency group
+        // Warm cache for common currency pairs to improve performance
+        await _currencyConversionService.WarmCacheForCommonCurrencyPairsAsync(targetCurrency);
+
+        // Performance optimization: Enhanced batch currency conversion for dashboard loading
+        var uniqueCurrencies = currencyGroups.Select(g => g.Key).Where(c => c != targetCurrency).ToHashSet();
+        
+        // Pre-warm cache for frequently used currency pairs to improve performance
+        if (uniqueCurrencies.Any())
+        {
+            // Preload frequently used pairs for better performance
+            var frequentPairs = uniqueCurrencies.Select(c => (c, targetCurrency)).ToList();
+            await _currencyConversionService.PreloadCurrencyPairsAsync(frequentPairs);
+        }
+        
+        // Performance optimization: Use enhanced batch conversion with optimizations
+        Dictionary<string, decimal> conversionResults = new();
+        if (uniqueCurrencies.Any())
+        {
+            try
+            {
+                // Create batch conversion requests for all currency groups
+                var batchRequests = currencyGroups
+                    .Where(g => g.Key != targetCurrency)
+                    .Select(g => new BatchConversionRequest
+                    {
+                        Amount = g.Sum(s => s.GetMonthlyCost()),
+                        FromCurrency = g.Key,
+                        ToCurrency = targetCurrency,
+                        RequestId = $"dashboard_{g.Key}"
+                    })
+                    .ToList();
+
+                if (batchRequests.Any())
+                {
+                    // Use optimized batch conversion for maximum performance
+                    var batchResults = await _currencyConversionService.BatchConvertWithOptimizationAsync(batchRequests);
+                    
+                    // Map results back to currency groups
+                    for (int i = 0; i < batchRequests.Count && i < batchResults.Count; i++)
+                    {
+                        var request = batchRequests[i];
+                        var result = batchResults[i];
+                        
+                        if (!result.HasError)
+                        {
+                            conversionResults[request.FromCurrency] = result.ConvertedAmount;
+                        }
+                        else
+                        {
+                            // Log error but continue with fallback
+                            _logger.LogWarning("Currency conversion failed for {FromCurrency} to {ToCurrency}: {Error}", 
+                                request.FromCurrency, request.ToCurrency, result.ErrorMessage);
+                            conversionResults[request.FromCurrency] = request.Amount; // Use original as fallback
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Batch currency conversion failed for dashboard stats");
+                // Enhanced error logging and fallback handling
+                foreach (var group in currencyGroups.Where(g => g.Key != targetCurrency))
+                {
+                    var originalAmount = group.Sum(s => s.GetMonthlyCost());
+                    conversionResults[group.Key] = originalAmount; // Use original as fallback
+                }
+            }
+        }
+
+        // Process each currency group using optimized batch conversion results
         foreach (var group in currencyGroups)
         {
             var originalAmount = group.Sum(s => s.GetMonthlyCost());
             var convertedAmount = originalAmount;
 
-            // Convert to target currency if different
+            // Use pre-calculated conversion result if available
             if (group.Key != targetCurrency)
             {
-                try
+                if (conversionResults.TryGetValue(group.Key, out var preCalculatedAmount))
                 {
-                    convertedAmount = await _currencyConversionService.ConvertAsync(
-                        originalAmount, group.Key, targetCurrency);
+                    convertedAmount = preCalculatedAmount;
                 }
-                catch
+                else
                 {
-                    // If conversion fails, use original amount as fallback
-                    convertedAmount = originalAmount;
+                    // This should rarely happen with optimized batch processing
+                    try
+                    {
+                        convertedAmount = await _currencyConversionService.ConvertAsync(
+                            originalAmount, group.Key, targetCurrency);
+                    }
+                    catch
+                    {
+                        // If conversion fails, use original amount as fallback
+                        convertedAmount = originalAmount;
+                    }
                 }
             }
 
@@ -245,31 +324,49 @@ public class DashboardController : ControllerBase
                            (!s.CancellationDate.HasValue || s.CancellationDate.Value >= targetDate))
                 .ToList();
 
-            // Group by currency and convert to target currency
-            var currencyGroups = activeSubscriptions.GroupBy(s => s.Currency);
+            // Group by currency and convert to target currency using batch optimization
+            var currencyGroups = activeSubscriptions.GroupBy(s => s.Currency).ToList();
             decimal totalConvertedSpending = 0;
 
-            foreach (var group in currencyGroups)
+            // Performance optimization: Use optimized exchange rates for monthly spending data
+            var uniqueCurrencies = currencyGroups.Select(g => g.Key).Where(c => c != targetCurrency).ToHashSet();
+            
+            if (uniqueCurrencies.Any())
             {
-                var originalAmount = group.Sum(s => s.GetMonthlyCost());
-                var convertedAmount = originalAmount;
-
-                // Convert to target currency if different
-                if (group.Key != targetCurrency)
+                try
                 {
-                    try
+                    // Performance optimization: Single optimized exchange rate call for all currencies
+                    var optimizedRates = await _currencyConversionService.GetOptimizedExchangeRatesAsync(targetCurrency, uniqueCurrencies);
+                    
+                    // Calculate total converted spending using pre-fetched rates
+                    foreach (var group in currencyGroups)
                     {
-                        convertedAmount = await _currencyConversionService.ConvertAsync(
-                            originalAmount, group.Key, targetCurrency);
-                    }
-                    catch
-                    {
-                        // If conversion fails, use original amount as fallback
-                        convertedAmount = originalAmount;
+                        var originalAmount = group.Sum(s => s.GetMonthlyCost());
+                        
+                        if (group.Key == targetCurrency)
+                        {
+                            totalConvertedSpending += originalAmount;
+                        }
+                        else if (optimizedRates.TryGetValue(group.Key, out var rate))
+                        {
+                            totalConvertedSpending += originalAmount * rate;
+                        }
+                        else
+                        {
+                            totalConvertedSpending += originalAmount; // Fallback
+                        }
                     }
                 }
-
-                totalConvertedSpending += convertedAmount;
+                catch (Exception ex)
+                {
+                    // Fallback to original amounts on conversion failure
+                    totalConvertedSpending = currencyGroups.Sum(g => g.Sum(s => s.GetMonthlyCost()));
+                }
+            }
+            else
+            {
+                // No conversion needed - all currencies match target
+                totalConvertedSpending = currencyGroups.Sum(g => g.Sum(s => s.GetMonthlyCost()));
             }
 
             monthlyData.Add(new MonthlySpendingDto
@@ -305,6 +402,10 @@ public class DashboardController : ControllerBase
 
         var categoryGroups = subscriptions.GroupBy(s => s.Category);
 
+        // Pre-fetch exchange rates for all unique currencies using optimized batch operations
+        var allUniqueCurrencies = subscriptions.Select(s => s.Currency).Where(c => c != targetCurrency).ToHashSet();
+        var exchangeRates = await _currencyConversionService.GetOptimizedExchangeRatesAsync(targetCurrency, allUniqueCurrencies);
+
         foreach (var categoryGroup in categoryGroups)
         {
             // Group subscriptions in this category by currency
@@ -316,18 +417,24 @@ public class DashboardController : ControllerBase
                 var originalAmount = currencyGroup.Sum(s => s.GetMonthlyCost());
                 var convertedAmount = originalAmount;
 
-                // Convert to target currency if different
+                // Convert to target currency if different using pre-fetched rates
                 if (currencyGroup.Key != targetCurrency)
                 {
-                    try
+                    if (exchangeRates.TryGetValue(currencyGroup.Key, out var rate))
                     {
-                        convertedAmount = await _currencyConversionService.ConvertAsync(
-                            originalAmount, currencyGroup.Key, targetCurrency);
+                        convertedAmount = originalAmount * rate;
                     }
-                    catch
+                    else
                     {
-                        // If conversion fails, use original amount as fallback
-                        convertedAmount = originalAmount;
+                        try
+                        {
+                            convertedAmount = await _currencyConversionService.ConvertAsync(
+                                originalAmount, currencyGroup.Key, targetCurrency);
+                        }
+                        catch
+                        {
+                            convertedAmount = originalAmount;
+                        }
                     }
                 }
 
