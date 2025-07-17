@@ -33,7 +33,7 @@ export function PerformanceMonitor({ componentName = "Component", showInProducti
 
   // Don't show in production unless explicitly enabled
   React.useEffect(() => {
-    if (process.env.NODE_ENV === "production" && !showInProduction) {
+    if (!import.meta.env.DEV && !showInProduction) {
       return
     }
     setIsVisible(true)

@@ -564,11 +564,11 @@ const DashboardPage: React.FC = () => {
                           <CurrencyDisplay
                             amount={dashboardStats?.totalMonthlyCost || 0}
                             currency={dashboardStats?.displayCurrency || userCurrency}
-                            showTooltip={dashboardStats?.currencyBreakdowns?.length > 1}
-                            tooltipContent={dashboardStats?.currencyBreakdowns?.length > 1 ? (
+                            showTooltip={(dashboardStats?.currencyBreakdowns?.length || 0) > 1}
+                            tooltipContent={(dashboardStats?.currencyBreakdowns?.length || 0) > 1 ? (
                               <div className="space-y-1">
                                 <div className="font-semibold">Original currencies:</div>
-                                {dashboardStats.currencyBreakdowns?.map((breakdown, idx) => (
+                                {dashboardStats?.currencyBreakdowns?.map((breakdown, idx) => (
                                   <div key={idx} className="text-sm">
                                     {formatCurrency(breakdown.originalAmount, breakdown.currency)}
                                   </div>

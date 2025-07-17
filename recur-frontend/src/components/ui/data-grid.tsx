@@ -150,7 +150,6 @@ export function DataGrid<T extends Record<string, any>>({
                   <th className="w-12 p-4">
                     <Checkbox
                       checked={isAllSelected}
-                      indeterminate={isIndeterminate}
                       onCheckedChange={handleSelectAll}
                     />
                   </th>

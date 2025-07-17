@@ -48,6 +48,7 @@ import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import { settingsApi, type UserSettings, type UpdateProfileRequest, type UpdateUserSettingsRequest } from '../api/settings';
 import { SUPPORTED_CURRENCIES } from '@/lib/utils';
+import { CurrencySettings } from '@/components/currency-settings';
 
 const SettingsPage: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -252,10 +253,14 @@ const SettingsPage: React.FC = () => {
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <UserIcon className="h-4 w-4" />
             Profile
+          </TabsTrigger>
+          <TabsTrigger value="currency" className="flex items-center gap-2">
+            <CreditCardIcon className="h-4 w-4" />
+            Currency
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <BellIcon className="h-4 w-4" />
@@ -400,6 +405,17 @@ const SettingsPage: React.FC = () => {
           </Card>
         </TabsContent>
 
+        {/* Currency Settings */}
+        <TabsContent value="currency" className="space-y-6">
+          {userSettings && (
+            <CurrencySettings
+              settings={userSettings}
+              onSettingChange={handleNotificationChange}
+              disabled={loading}
+            />
+          )}
+        </TabsContent>
+
         {/* Notification Settings */}
         <TabsContent value="notifications" className="space-y-6">
           <Card>
@@ -541,7 +557,7 @@ const SettingsPage: React.FC = () => {
                         step="0.01"
                         placeholder="0.00"
                         value={userSettings.budgetLimit || ''}
-                        onChange={(e) => handleNotificationChange('budgetLimit', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        onChange={(e) => handleNotificationChange('budgetLimit', e.target.value ? parseFloat(e.target.value) : 0)}
                       />
                       <p className="text-sm text-gray-600">Set a monthly spending limit for alerts</p>
                     </div>
