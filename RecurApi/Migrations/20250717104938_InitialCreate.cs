@@ -36,6 +36,7 @@ namespace RecurApi.Migrations
                     LastName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     TimeZone = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Currency = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    BudgetLimit = table.Column<decimal>(type: "decimal(10,2)", precision: 10, scale: 2, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
                     LastLoginAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -73,6 +74,24 @@ namespace RecurApi.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Categories", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ExchangeRates",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FromCurrency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: false),
+                    ToCurrency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: false),
+                    Rate = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Source = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExchangeRates", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -357,6 +376,26 @@ namespace RecurApi.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_ExchangeRate_Currencies_Expiry",
+                table: "ExchangeRates",
+                columns: new[] { "FromCurrency", "ToCurrency", "ExpiresAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExchangeRate_ExpiresAt",
+                table: "ExchangeRates",
+                column: "ExpiresAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExchangeRate_FromCurrency_Timestamp",
+                table: "ExchangeRates",
+                columns: new[] { "FromCurrency", "Timestamp" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExchangeRate_Source_Timestamp",
+                table: "ExchangeRates",
+                columns: new[] { "Source", "Timestamp" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Subscription_User_Name",
                 table: "Subscriptions",
                 columns: new[] { "UserId", "Name" });
@@ -393,6 +432,9 @@ namespace RecurApi.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUserTokens");
+
+            migrationBuilder.DropTable(
+                name: "ExchangeRates");
 
             migrationBuilder.DropTable(
                 name: "UserSettings");

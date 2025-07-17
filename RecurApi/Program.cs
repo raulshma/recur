@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RecurApi.Data;
 using RecurApi.Models;
+using RecurApi.Services;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -14,9 +15,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 // Configure Entity Framework
 builder.Services.AddDbContext<RecurDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
 
 // Configure Identity
 builder.Services.AddIdentity<User, IdentityRole>(options =>
@@ -75,13 +77,14 @@ builder.Services.AddCors(options =>
 // builder.Services.AddRateLimiter(...);
 
 // Configure Currency Services
-builder.Services.AddHttpClient<RecurApi.Services.ExchangeRateApiProvider>();
-builder.Services.AddScoped<RecurApi.Services.IExchangeRateProvider, RecurApi.Services.ExchangeRateApiProvider>();
-builder.Services.AddScoped<RecurApi.Services.ICurrencyConversionService, RecurApi.Services.CurrencyConversionService>();
+builder.Services.AddHttpClient<ExchangeRateApiProvider>();
+builder.Services.AddScoped<IExchangeRateProvider, ExchangeRateApiProvider>();
+builder.Services.AddScoped<ICurrencyConversionService, CurrencyConversionService>();
 builder.Services.AddMemoryCache();
 
-// Register background service for exchange rate updates
-builder.Services.AddHostedService<RecurApi.Services.ExchangeRateBackgroundService>();
+// Register background services for exchange rate updates and optimization
+builder.Services.AddHostedService<ExchangeRateBackgroundService>();
+builder.Services.AddHostedService<CurrencyOptimizationBackgroundService>();
 
 var app = builder.Build();
 

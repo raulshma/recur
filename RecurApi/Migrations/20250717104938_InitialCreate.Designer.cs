@@ -12,8 +12,8 @@ using RecurApi.Data;
 namespace RecurApi.Migrations
 {
     [DbContext(typeof(RecurDbContext))]
-    [Migration("20250716182140_AddExchangeRateTable")]
-    partial class AddExchangeRateTable
+    [Migration("20250717104938_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -345,6 +345,15 @@ namespace RecurApi.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("IX_ExchangeRate_ExpiresAt");
+
+                    b.HasIndex("FromCurrency", "Timestamp")
+                        .HasDatabaseName("IX_ExchangeRate_FromCurrency_Timestamp");
+
+                    b.HasIndex("Source", "Timestamp")
+                        .HasDatabaseName("IX_ExchangeRate_Source_Timestamp");
+
                     b.HasIndex("FromCurrency", "ToCurrency", "ExpiresAt")
                         .HasDatabaseName("IX_ExchangeRate_Currencies_Expiry");
 
@@ -443,7 +452,8 @@ namespace RecurApi.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal?>("BudgetLimit")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
