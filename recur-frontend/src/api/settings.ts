@@ -14,6 +14,13 @@ export interface UserSettings {
   theme: string;
   dashboardLayout?: string;
   budgetLimit?: number;
+  // Currency conversion settings
+  enableCurrencyConversion: boolean;
+  autoConvertCurrencies: boolean;
+  preferredDisplayCurrency: string;
+  showOriginalCurrency: boolean;
+  showConversionRates: boolean;
+  currencyRefreshInterval: number; // in minutes
 }
 
 export interface UpdateProfileRequest {
@@ -38,6 +45,13 @@ export interface UpdateUserSettingsRequest {
   theme: string;
   dashboardLayout?: string;
   budgetLimit?: number;
+  // Currency conversion settings
+  enableCurrencyConversion: boolean;
+  autoConvertCurrencies: boolean;
+  preferredDisplayCurrency: string;
+  showOriginalCurrency: boolean;
+  showConversionRates: boolean;
+  currencyRefreshInterval: number;
 }
 
 export interface AuthResponse {
@@ -68,9 +82,7 @@ export const settingsApi = {
   },
 
   async exportData(): Promise<Blob> {
-    const response = await apiClient.get('/auth/export-data', {}, {
-      responseType: 'blob'
-    });
-    return response.data;
+    const response = await apiClient.get('/auth/export-data');
+    return response.data as Blob;
   },
 };

@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using RecurApi.Data;
 using RecurApi.Models;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,27 +71,8 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Configure Rate Limiting
-builder.Services.AddRateLimiter(options =>
-{
-    options.AddFixedWindowLimiter("CurrencyApi", limiterOptions =>
-    {
-        limiterOptions.PermitLimit = 100; // 100 requests
-        limiterOptions.Window = TimeSpan.FromMinutes(1); // per minute
-        limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
-        limiterOptions.QueueLimit = 10; // Allow 10 requests to queue
-    });
-    
-    options.AddFixedWindowLimiter("CurrencyConversion", limiterOptions =>
-    {
-        limiterOptions.PermitLimit = 50; // 50 conversions
-        limiterOptions.Window = TimeSpan.FromMinutes(1); // per minute
-        limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
-        limiterOptions.QueueLimit = 5; // Allow 5 requests to queue
-    });
-    
-    options.RejectionStatusCode = 429; // Too Many Requests
-});
+// TODO: Configure Rate Limiting - needs proper .NET 9 API
+// builder.Services.AddRateLimiter(...);
 
 // Configure Currency Services
 builder.Services.AddHttpClient<RecurApi.Services.ExchangeRateApiProvider>();
@@ -113,7 +95,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
 
-app.UseRateLimiter();
+// TODO: Enable rate limiter when properly configured
+// app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

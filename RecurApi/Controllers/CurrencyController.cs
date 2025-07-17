@@ -158,7 +158,9 @@ public class CurrencyController : ControllerBase
                 ExchangeRate = result.ExchangeRate,
                 RateTimestamp = result.RateTimestamp,
                 IsStale = result.IsStale,
-                Success = true
+                Success = !result.HasError,
+                HasError = result.HasError,
+                ErrorMessage = result.ErrorMessage
             };
 
             // Add cache headers for same-currency conversions
@@ -190,6 +192,143 @@ public class CurrencyController : ControllerBase
             _logger.LogError(ex, "Unexpected error converting {Amount} {FromCurrency} to {ToCurrency}", 
                 request?.Amount, request?.FromCurrency, request?.ToCurrency);
             return StatusCode(500, new { error = "An unexpected error occurred" });
+        }
+    }
+
+    /// <summary>
+    /// Convert multiple amounts in a single request
+    /// </summary>
+    /// <param name="request">Batch conversion request</param>
+    /// <returns>Array of conversion results</returns>
+    [HttpPost("convert/batch")]
+    [EnableRateLimiting("CurrencyConversion")]
+    public async Task<ActionResult<BatchCurrencyConversionResponseDto>> ConvertCurrencyBatch([FromBody] BatchCurrencyConversionRequestDto request)
+    {
+        try
+        {
+            // Validate request
+            if (request == null || request.Conversions == null || !request.Conversions.Any())
+            {
+                return BadRequest(new { error = "Request body with conversions is required" });
+            }
+
+            if (request.Conversions.Count > 50)
+            {
+                return BadRequest(new { error = "Maximum 50 conversions allowed per batch request" });
+            }
+
+            var results = new List<CurrencyConversionResponseDto>();
+            var hasAnyErrors = false;
+
+            foreach (var conversion in request.Conversions)
+            {
+                // Validate individual conversion
+                if (conversion.Amount <= 0)
+                {
+                    results.Add(new CurrencyConversionResponseDto
+                    {
+                        OriginalAmount = conversion.Amount,
+                        ConvertedAmount = conversion.Amount,
+                        FromCurrency = conversion.FromCurrency ?? "",
+                        ToCurrency = conversion.ToCurrency ?? "",
+                        ExchangeRate = 1.0m,
+                        RateTimestamp = DateTime.UtcNow,
+                        IsStale = true,
+                        Success = false,
+                        HasError = true,
+                        ErrorMessage = "Amount must be greater than zero"
+                    });
+                    hasAnyErrors = true;
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(conversion.FromCurrency) || conversion.FromCurrency.Length != 3 ||
+                    string.IsNullOrWhiteSpace(conversion.ToCurrency) || conversion.ToCurrency.Length != 3)
+                {
+                    results.Add(new CurrencyConversionResponseDto
+                    {
+                        OriginalAmount = conversion.Amount,
+                        ConvertedAmount = conversion.Amount,
+                        FromCurrency = conversion.FromCurrency ?? "",
+                        ToCurrency = conversion.ToCurrency ?? "",
+                        ExchangeRate = 1.0m,
+                        RateTimestamp = DateTime.UtcNow,
+                        IsStale = true,
+                        Success = false,
+                        HasError = true,
+                        ErrorMessage = "Currency codes must be 3-letter codes"
+                    });
+                    hasAnyErrors = true;
+                    continue;
+                }
+
+                // Normalize currency codes
+                var fromCurrency = conversion.FromCurrency.Trim().ToUpperInvariant();
+                var toCurrency = conversion.ToCurrency.Trim().ToUpperInvariant();
+
+                try
+                {
+                    // Perform conversion
+                    var result = await _currencyConversionService.ConvertWithMetadataAsync(
+                        conversion.Amount, fromCurrency, toCurrency);
+
+                    results.Add(new CurrencyConversionResponseDto
+                    {
+                        OriginalAmount = conversion.Amount,
+                        ConvertedAmount = result.ConvertedAmount,
+                        FromCurrency = result.FromCurrency,
+                        ToCurrency = result.ToCurrency,
+                        ExchangeRate = result.ExchangeRate,
+                        RateTimestamp = result.RateTimestamp,
+                        IsStale = result.IsStale,
+                        Success = !result.HasError,
+                        HasError = result.HasError,
+                        ErrorMessage = result.ErrorMessage
+                    });
+
+                    if (result.HasError)
+                    {
+                        hasAnyErrors = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in batch conversion for {Amount} {FromCurrency} to {ToCurrency}", 
+                        conversion.Amount, fromCurrency, toCurrency);
+                    
+                    results.Add(new CurrencyConversionResponseDto
+                    {
+                        OriginalAmount = conversion.Amount,
+                        ConvertedAmount = conversion.Amount,
+                        FromCurrency = fromCurrency,
+                        ToCurrency = toCurrency,
+                        ExchangeRate = 1.0m,
+                        RateTimestamp = DateTime.UtcNow,
+                        IsStale = true,
+                        Success = false,
+                        HasError = true,
+                        ErrorMessage = "Conversion failed - using original amount"
+                    });
+                    hasAnyErrors = true;
+                }
+            }
+
+            var batchResponse = new BatchCurrencyConversionResponseDto
+            {
+                Results = results,
+                TotalConversions = results.Count,
+                SuccessfulConversions = results.Count(r => r.Success),
+                FailedConversions = results.Count(r => r.HasError),
+                HasErrors = hasAnyErrors,
+                Timestamp = DateTime.UtcNow
+            };
+
+            return Ok(batchResponse);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in batch currency conversion");
+            return StatusCode(500, new { error = "An unexpected error occurred during batch conversion" });
         }
     }
 }
@@ -228,4 +367,22 @@ public class CurrencyConversionResponseDto
     public DateTime RateTimestamp { get; set; }
     public bool IsStale { get; set; }
     public bool Success { get; set; }
+    public bool HasError { get; set; }
+    public string? ErrorMessage { get; set; }
+}
+
+public class BatchCurrencyConversionRequestDto
+{
+    [Required]
+    public List<CurrencyConversionRequestDto> Conversions { get; set; } = new();
+}
+
+public class BatchCurrencyConversionResponseDto
+{
+    public List<CurrencyConversionResponseDto> Results { get; set; } = new();
+    public int TotalConversions { get; set; }
+    public int SuccessfulConversions { get; set; }
+    public int FailedConversions { get; set; }
+    public bool HasErrors { get; set; }
+    public DateTime Timestamp { get; set; }
 }

@@ -38,6 +38,24 @@ public class CurrencyConversionService : ICurrencyConversionService
 
     public async Task<CurrencyConversionResult> ConvertWithMetadataAsync(decimal amount, string fromCurrency, string toCurrency)
     {
+        // Validate input parameters
+        if (amount < 0)
+        {
+            _logger.LogWarning("Invalid amount for currency conversion: {Amount}", amount);
+            throw new ArgumentException("Amount cannot be negative", nameof(amount));
+        }
+
+        if (string.IsNullOrWhiteSpace(fromCurrency) || string.IsNullOrWhiteSpace(toCurrency))
+        {
+            _logger.LogWarning("Invalid currency codes for conversion: FromCurrency={FromCurrency}, ToCurrency={ToCurrency}", 
+                fromCurrency, toCurrency);
+            throw new ArgumentException("Currency codes cannot be null or empty");
+        }
+
+        // Normalize currency codes
+        fromCurrency = fromCurrency.Trim().ToUpperInvariant();
+        toCurrency = toCurrency.Trim().ToUpperInvariant();
+
         if (fromCurrency == toCurrency)
         {
             return new CurrencyConversionResult
@@ -47,7 +65,9 @@ public class CurrencyConversionService : ICurrencyConversionService
                 RateTimestamp = DateTime.UtcNow,
                 IsStale = false,
                 FromCurrency = fromCurrency,
-                ToCurrency = toCurrency
+                ToCurrency = toCurrency,
+                HasError = false,
+                ErrorMessage = null
             };
         }
 
@@ -62,15 +82,16 @@ public class CurrencyConversionService : ICurrencyConversionService
                 RateTimestamp = exchangeRate.Timestamp,
                 IsStale = DateTime.UtcNow.Subtract(exchangeRate.Timestamp).TotalHours > DatabaseCacheExpirationHours,
                 FromCurrency = fromCurrency,
-                ToCurrency = toCurrency
+                ToCurrency = toCurrency,
+                HasError = false,
+                ErrorMessage = null
             };
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Failed to convert {Amount} from {FromCurrency} to {ToCurrency}", 
+            _logger.LogWarning(ex, "Invalid currency conversion request: {Amount} from {FromCurrency} to {ToCurrency}", 
                 amount, fromCurrency, toCurrency);
             
-            // Return original amount as fallback
             return new CurrencyConversionResult
             {
                 ConvertedAmount = amount,
@@ -78,7 +99,77 @@ public class CurrencyConversionService : ICurrencyConversionService
                 RateTimestamp = DateTime.UtcNow,
                 IsStale = true,
                 FromCurrency = fromCurrency,
-                ToCurrency = toCurrency
+                ToCurrency = toCurrency,
+                HasError = true,
+                ErrorMessage = "Invalid currency codes provided"
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Currency conversion service unavailable for {Amount} from {FromCurrency} to {ToCurrency}", 
+                amount, fromCurrency, toCurrency);
+            
+            return new CurrencyConversionResult
+            {
+                ConvertedAmount = amount,
+                ExchangeRate = 1.0m,
+                RateTimestamp = DateTime.UtcNow,
+                IsStale = true,
+                FromCurrency = fromCurrency,
+                ToCurrency = toCurrency,
+                HasError = true,
+                ErrorMessage = "Currency conversion service temporarily unavailable"
+            };
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Network error during currency conversion: {Amount} from {FromCurrency} to {ToCurrency}", 
+                amount, fromCurrency, toCurrency);
+            
+            return new CurrencyConversionResult
+            {
+                ConvertedAmount = amount,
+                ExchangeRate = 1.0m,
+                RateTimestamp = DateTime.UtcNow,
+                IsStale = true,
+                FromCurrency = fromCurrency,
+                ToCurrency = toCurrency,
+                HasError = true,
+                ErrorMessage = "Network error - using original amount"
+            };
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Currency conversion request timed out: {Amount} from {FromCurrency} to {ToCurrency}", 
+                amount, fromCurrency, toCurrency);
+            
+            return new CurrencyConversionResult
+            {
+                ConvertedAmount = amount,
+                ExchangeRate = 1.0m,
+                RateTimestamp = DateTime.UtcNow,
+                IsStale = true,
+                FromCurrency = fromCurrency,
+                ToCurrency = toCurrency,
+                HasError = true,
+                ErrorMessage = "Request timed out - using original amount"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during currency conversion: {Amount} from {FromCurrency} to {ToCurrency}", 
+                amount, fromCurrency, toCurrency);
+            
+            return new CurrencyConversionResult
+            {
+                ConvertedAmount = amount,
+                ExchangeRate = 1.0m,
+                RateTimestamp = DateTime.UtcNow,
+                IsStale = true,
+                FromCurrency = fromCurrency,
+                ToCurrency = toCurrency,
+                HasError = true,
+                ErrorMessage = "Conversion failed - displaying original amount"
             };
         }
     }

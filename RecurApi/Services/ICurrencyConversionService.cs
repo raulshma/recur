@@ -15,4 +15,6 @@ public class CurrencyConversionResult
     public bool IsStale { get; set; }
     public string FromCurrency { get; set; } = string.Empty;
     public string ToCurrency { get; set; } = string.Empty;
+    public bool HasError { get; set; }
+    public string? ErrorMessage { get; set; }
 }

@@ -230,7 +230,7 @@ export const AreaChart = React.forwardRef<HTMLDivElement, AreaChartProps>(
                   />
                   {/* Data points */}
                   {showDots &&
-                    points.map((point, pointIndex) => (
+                    points.map((point: any, pointIndex: number) => (
                       <circle
                         key={pointIndex}
                         cx={point.x}

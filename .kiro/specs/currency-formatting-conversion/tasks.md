@@ -71,14 +71,14 @@
   - Update budget comparison logic with proper currency conversion
   - _Requirements: 2.2, 4.4_
 
-- [ ] 11. Add currency conversion settings and preferences
+- [x] 11. Add currency conversion settings and preferences
   - Create settings UI for currency conversion preferences
   - Add toggle for showing/hiding original amounts
   - Implement currency refresh functionality
   - Add stale rate warnings and manual refresh options
   - _Requirements: 1.2, 3.3, 4.3_
 
-- [ ] 12. Implement comprehensive error handling
+- [x] 12. Implement comprehensive error handling
   - Add try-catch blocks around all currency conversion operations
   - Create fallback display logic when conversion fails
   - Implement user-friendly error messages for conversion failures

@@ -40,7 +40,7 @@ public class DashboardController : ControllerBase
 
         // Get user's preferred currency or default to USD
         var user = await _context.Users.FindAsync(userId);
-        var targetCurrency = displayCurrency ?? user?.PreferredCurrency ?? "USD";
+        var targetCurrency = displayCurrency ?? user?.Currency ?? "USD";
 
         // Group subscriptions by currency for breakdown
         var currencyGroups = activeSubscriptions
@@ -228,7 +228,7 @@ public class DashboardController : ControllerBase
 
         // Get user's preferred currency or default to USD
         var user = await _context.Users.FindAsync(userId);
-        var targetCurrency = displayCurrency ?? user?.PreferredCurrency ?? "USD";
+        var targetCurrency = displayCurrency ?? user?.Currency ?? "USD";
 
         var monthlyData = new List<MonthlySpendingDto>();
         var currentDate = DateTime.UtcNow;
@@ -293,7 +293,7 @@ public class DashboardController : ControllerBase
 
         // Get user's preferred currency or default to USD
         var user = await _context.Users.FindAsync(userId);
-        var targetCurrency = displayCurrency ?? user?.PreferredCurrency ?? "USD";
+        var targetCurrency = displayCurrency ?? user?.Currency ?? "USD";
 
         // Get subscriptions and calculate on client side
         var subscriptions = await _context.Subscriptions
@@ -366,7 +366,7 @@ public class DashboardController : ControllerBase
 
         // Get user's preferred currency or default to USD
         var user = await _context.Users.FindAsync(userId);
-        var targetCurrency = displayCurrency ?? user?.PreferredCurrency ?? "USD";
+        var targetCurrency = displayCurrency ?? user?.Currency ?? "USD";
 
         var upcomingBills = new List<UpcomingBillDto>();
 

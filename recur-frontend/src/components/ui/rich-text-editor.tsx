@@ -90,15 +90,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writing..
           !value && !isFocused && "text-gray-400",
         )}
         data-placeholder={placeholder}
-        style={{
-          ...(!value &&
-            !isFocused && {
-              "::before": {
-                content: `"${placeholder}"`,
-                color: "#9CA3AF",
-              },
-            }),
-        }}
+        style={{}}
       />
     </div>
   )
