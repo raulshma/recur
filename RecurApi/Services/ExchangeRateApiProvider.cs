@@ -18,8 +18,8 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
     private readonly TimeSpan _cacheExpiry;
 
     public ExchangeRateApiProvider(
-        HttpClient httpClient, 
-        ILogger<ExchangeRateApiProvider> logger, 
+        HttpClient httpClient,
+        ILogger<ExchangeRateApiProvider> logger,
         IConfiguration configuration,
         IMemoryCache memoryCache,
         IServiceProvider serviceProvider)
@@ -29,7 +29,7 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
         _memoryCache = memoryCache;
         _serviceProvider = serviceProvider;
         _apiKey = configuration["ExchangeRateApi:ApiKey"] ?? "demo"; // Use demo for development
-        _cacheExpiry = TimeSpan.FromMinutes(configuration["ExchangeRateApi:CacheExpiryMinutes"] ?? 720);
+        _cacheExpiry = TimeSpan.FromMinutes(configuration.GetValue<int?>("ExchangeRateApi:CacheExpiryMinutes") ?? 720);
     }
 
     public async Task<ExchangeRateResponse> GetRatesAsync(string baseCurrency)
@@ -38,9 +38,9 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
         {
             var url = $"{_baseUrl}/{_apiKey}/latest/{baseCurrency}";
             _logger.LogInformation("Fetching exchange rates from {Url}", url.Replace(_apiKey, "[API_KEY]"));
-            
+
             var response = await _httpClient.GetAsync(url);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError("Failed to fetch exchange rates. Status: {StatusCode}", response.StatusCode);
@@ -51,7 +51,7 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
 
             var jsonContent = await response.Content.ReadAsStringAsync();
             _logger.LogDebug("API Response: {Response}", jsonContent);
-            
+
             var apiResponse = JsonSerializer.Deserialize<ExchangeRateApiResponse>(jsonContent, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -69,7 +69,7 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
                 return new ExchangeRateResponse { Success = false };
             }
 
-            _logger.LogInformation("Successfully fetched exchange rates for {BaseCurrency}. Found {Count} currencies.", 
+            _logger.LogInformation("Successfully fetched exchange rates for {BaseCurrency}. Found {Count} currencies.",
                 baseCurrency, apiResponse.ConversionRates.Count);
 
             return new ExchangeRateResponse
@@ -93,11 +93,11 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
             return 1.0m;
 
         var cacheKey = $"exchange_rate_{fromCurrency}_{toCurrency}";
-        
+
         // Check memory cache first
         if (_memoryCache.TryGetValue(cacheKey, out decimal cachedRate))
         {
-            _logger.LogInformation("Using cached exchange rate for {FromCurrency} to {ToCurrency}: {Rate}", 
+            _logger.LogInformation("Using cached exchange rate for {FromCurrency} to {ToCurrency}: {Rate}",
                 fromCurrency, toCurrency, cachedRate);
             return cachedRate;
         }
@@ -105,10 +105,10 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
         // Check database cache
         using var scope = _serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<RecurDbContext>();
-        
+
         var dbRate = await dbContext.ExchangeRates
-            .Where(er => er.FromCurrency == fromCurrency && 
-                        er.ToCurrency == toCurrency && 
+            .Where(er => er.FromCurrency == fromCurrency &&
+                        er.ToCurrency == toCurrency &&
                         er.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(er => er.Timestamp)
             .FirstOrDefaultAsync();
@@ -116,7 +116,7 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
         if (dbRate != null)
         {
             // Cache in memory for faster access
-            _logger.LogInformation("Using database cached exchange rate for {FromCurrency} to {ToCurrency}: {Rate}", 
+            _logger.LogInformation("Using database cached exchange rate for {FromCurrency} to {ToCurrency}: {Rate}",
                 fromCurrency, toCurrency, dbRate.Rate);
             _memoryCache.Set(cacheKey, dbRate.Rate, TimeSpan.FromMinutes(30));
             return dbRate.Rate;
@@ -127,7 +127,7 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
         if (_memoryCache.TryGetValue(reverseCacheKey, out decimal reverseRate) && reverseRate != 0)
         {
             var calculatedRate = 1 / reverseRate;
-            _logger.LogInformation("Calculated reverse exchange rate for {FromCurrency} to {ToCurrency}: {Rate}", 
+            _logger.LogInformation("Calculated reverse exchange rate for {FromCurrency} to {ToCurrency}: {Rate}",
                 fromCurrency, toCurrency, calculatedRate);
             _memoryCache.Set(cacheKey, calculatedRate, TimeSpan.FromMinutes(30));
             return calculatedRate;
@@ -135,8 +135,8 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
 
         // Check for reverse rate in database
         var reverseDbRate = await dbContext.ExchangeRates
-            .Where(er => er.FromCurrency == toCurrency && 
-                        er.ToCurrency == fromCurrency && 
+            .Where(er => er.FromCurrency == toCurrency &&
+                        er.ToCurrency == fromCurrency &&
                         er.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(er => er.Timestamp)
             .FirstOrDefaultAsync();
@@ -144,25 +144,25 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
         if (reverseDbRate != null && reverseDbRate.Rate != 0)
         {
             var calculatedRate = 1 / reverseDbRate.Rate;
-            _logger.LogInformation("Calculated reverse exchange rate from database for {FromCurrency} to {ToCurrency}: {Rate}", 
+            _logger.LogInformation("Calculated reverse exchange rate from database for {FromCurrency} to {ToCurrency}: {Rate}",
                 fromCurrency, toCurrency, calculatedRate);
             _memoryCache.Set(cacheKey, calculatedRate, TimeSpan.FromMinutes(30));
             return calculatedRate;
         }
 
         // Fetch from API and cache
-        _logger.LogInformation("Fetching exchange rate from API for {FromCurrency} to {ToCurrency}", 
+        _logger.LogInformation("Fetching exchange rate from API for {FromCurrency} to {ToCurrency}",
             fromCurrency, toCurrency);
         var rate = await FetchAndCacheRateAsync(fromCurrency, toCurrency);
         if (rate.HasValue)
         {
             _memoryCache.Set(cacheKey, rate.Value, TimeSpan.FromMinutes(30));
-            _logger.LogInformation("Successfully fetched and cached exchange rate for {FromCurrency} to {ToCurrency}: {Rate}", 
+            _logger.LogInformation("Successfully fetched and cached exchange rate for {FromCurrency} to {ToCurrency}: {Rate}",
                 fromCurrency, toCurrency, rate.Value);
         }
         else
         {
-            _logger.LogWarning("Exchange rate not available for {FromCurrency} to {ToCurrency}", 
+            _logger.LogWarning("Exchange rate not available for {FromCurrency} to {ToCurrency}",
                 fromCurrency, toCurrency);
         }
 
@@ -182,9 +182,9 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
 
             if (!ratesResponse.Rates.ContainsKey(toCurrency))
             {
-                _logger.LogWarning("Currency {ToCurrency} not found in exchange rate response for base {FromCurrency}", 
+                _logger.LogWarning("Currency {ToCurrency} not found in exchange rate response for base {FromCurrency}",
                     toCurrency, fromCurrency);
-                
+
                 // Try fetching the reverse rate and calculating the inverse
                 var reverseResponse = await GetRatesAsync(toCurrency);
                 if (reverseResponse.Success && reverseResponse.Rates.ContainsKey(fromCurrency))
@@ -193,21 +193,21 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
                     if (reverseRate > 0)
                     {
                         var calculatedRate = 1 / reverseRate;
-                        _logger.LogInformation("Calculated rate for {FromCurrency} to {ToCurrency} using reverse lookup: {Rate}", 
+                        _logger.LogInformation("Calculated rate for {FromCurrency} to {ToCurrency} using reverse lookup: {Rate}",
                             fromCurrency, toCurrency, calculatedRate);
-                        
+
                         // Store calculated rate in database
                         await StoreRateInDatabase(fromCurrency, toCurrency, calculatedRate);
-                        
+
                         return calculatedRate;
                     }
                 }
-                
+
                 return null;
             }
 
             var rate = ratesResponse.Rates[toCurrency];
-            
+
             // Store in database
             await StoreRateInDatabase(fromCurrency, toCurrency, rate);
 
@@ -219,14 +219,14 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
             return null;
         }
     }
-    
+
     private async Task StoreRateInDatabase(string fromCurrency, string toCurrency, decimal rate)
     {
         try
         {
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<RecurDbContext>();
-            
+
             var exchangeRate = new ExchangeRate
             {
                 FromCurrency = fromCurrency,
@@ -239,13 +239,13 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
 
             dbContext.ExchangeRates.Add(exchangeRate);
             await dbContext.SaveChangesAsync();
-            
-            _logger.LogInformation("Stored exchange rate in database: {FromCurrency} to {ToCurrency} = {Rate}", 
+
+            _logger.LogInformation("Stored exchange rate in database: {FromCurrency} to {ToCurrency} = {Rate}",
                 fromCurrency, toCurrency, rate);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to store exchange rate in database for {FromCurrency} to {ToCurrency}", 
+            _logger.LogError(ex, "Failed to store exchange rate in database for {FromCurrency} to {ToCurrency}",
                 fromCurrency, toCurrency);
         }
     }
@@ -254,10 +254,10 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
     {
         [JsonPropertyName("result")]
         public string Result { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("error-type")]
         public string? ErrorType { get; set; }
-        
+
         [JsonPropertyName("conversion_rates")]
         public Dictionary<string, decimal>? ConversionRates { get; set; }
     }
