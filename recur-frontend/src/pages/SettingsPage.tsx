@@ -100,9 +100,53 @@ const SettingsPage: React.FC = () => {
     try {
       setSettingsLoading(true);
       const settings = await settingsApi.getUserSettings();
-      setUserSettings(settings);
+      
+      // Ensure all required currency settings are present
+      const defaultSettings = {
+        emailNotifications: false,
+        trialEndingAlerts: false,
+        billingReminders: false,
+        priceChangeAlerts: false,
+        recommendationAlerts: false,
+        trialEndingReminderDays: 7,
+        billingReminderDays: 3,
+        defaultCurrency: 'USD',
+        dateFormat: 'MM/DD/YYYY',
+        timeZone: 'UTC',
+        theme: 'light',
+        enableCurrencyConversion: false,
+        autoConvertCurrencies: false,
+        preferredDisplayCurrency: 'USD',
+        showOriginalCurrency: true,
+        showConversionRates: false,
+        currencyRefreshInterval: 60
+      };
+      
+      // Merge with defaults to ensure all required properties exist
+      const mergedSettings = { ...defaultSettings, ...settings };
+      setUserSettings(mergedSettings);
     } catch (error) {
       console.error('Failed to fetch user settings:', error);
+      // Set default settings on error
+      setUserSettings({
+        emailNotifications: false,
+        trialEndingAlerts: false,
+        billingReminders: false,
+        priceChangeAlerts: false,
+        recommendationAlerts: false,
+        trialEndingReminderDays: 7,
+        billingReminderDays: 3,
+        defaultCurrency: 'USD',
+        dateFormat: 'MM/DD/YYYY',
+        timeZone: 'UTC',
+        theme: 'light',
+        enableCurrencyConversion: false,
+        autoConvertCurrencies: false,
+        preferredDisplayCurrency: 'USD',
+        showOriginalCurrency: true,
+        showConversionRates: false,
+        currencyRefreshInterval: 60
+      });
     } finally {
       setSettingsLoading(false);
     }
@@ -145,7 +189,7 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const onSecuritySubmit = async (data: any) => {
+  const onSecuritySubmit = async (data: unknown) => {
     try {
       setLoading(true);
       const response = await authApi.changePassword({
@@ -167,11 +211,15 @@ const SettingsPage: React.FC = () => {
   const handleNotificationChange = async (key: keyof UserSettings, value: boolean | number | string) => {
     if (!userSettings) return;
 
-    const updatedSettings = { ...userSettings, [key]: value };
-    console.log(`Updating setting ${key} to:`, value);
-    setUserSettings(updatedSettings);
-
     try {
+      // Create a copy of the current settings
+      const updatedSettings = { ...userSettings, [key]: value };
+      console.log(`Updating setting ${key} to:`, value);
+      
+      // Optimistically update UI
+      setUserSettings(updatedSettings);
+
+      // Save to server
       const response = await settingsApi.updateUserSettings(updatedSettings);
       console.log('Settings update response:', response);
       
@@ -180,10 +228,29 @@ const SettingsPage: React.FC = () => {
         console.log('Currency changed, updating user context with:', response.user);
         updateUser(response.user);
       }
+      
+      // If this is a currency-related setting, we might need to refresh some data
+      if (key === 'enableCurrencyConversion' || 
+          key === 'preferredDisplayCurrency' || 
+          key === 'currencyRefreshInterval') {
+        console.log('Currency setting changed, refreshing data if needed');
+        // No need to await this, let it happen in the background
+        try {
+          // Clear any cached currency data that might be using old settings
+          if (window.clearCurrencyCache && typeof window.clearCurrencyCache === 'function') {
+            window.clearCurrencyCache();
+          }
+        } catch (cacheError) {
+          console.warn('Failed to clear currency cache:', cacheError);
+        }
+      }
     } catch (error) {
       console.error('Failed to update settings:', error);
       // Revert the change on error
       setUserSettings(userSettings);
+      
+      // Show error message (you could add a toast notification here)
+      console.error(`Failed to update ${key}. Please try again.`);
     }
   };
 
@@ -407,9 +474,42 @@ const SettingsPage: React.FC = () => {
 
         {/* Currency Settings */}
         <TabsContent value="currency" className="space-y-6">
-          {userSettings && (
+          {settingsLoading ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCardIcon className="h-5 w-5" />
+                  Currency & Conversion Settings
+                </CardTitle>
+                <CardDescription>
+                  Loading currency settings...
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </CardContent>
+            </Card>
+          ) : (
             <CurrencySettings
-              settings={userSettings}
+              settings={userSettings || {
+                emailNotifications: false,
+                trialEndingAlerts: false,
+                billingReminders: false,
+                priceChangeAlerts: false,
+                recommendationAlerts: false,
+                trialEndingReminderDays: 7,
+                billingReminderDays: 3,
+                defaultCurrency: 'USD',
+                dateFormat: 'MM/DD/YYYY',
+                timeZone: 'UTC',
+                theme: 'light',
+                enableCurrencyConversion: false,
+                autoConvertCurrencies: false,
+                preferredDisplayCurrency: 'USD',
+                showOriginalCurrency: true,
+                showConversionRates: false,
+                currencyRefreshInterval: 60
+              }}
               onSettingChange={handleNotificationChange}
               disabled={loading}
             />
