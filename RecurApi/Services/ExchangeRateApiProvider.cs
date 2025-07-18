@@ -29,7 +29,7 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
         _memoryCache = memoryCache;
         _serviceProvider = serviceProvider;
         _apiKey = configuration["ExchangeRateApi:ApiKey"] ?? "demo"; // Use demo for development
-        _cacheExpiry = TimeSpan.FromMinutes(configuration["ExchangeRateApi:CacheExpiryMinutes"] ?? 720)
+        _cacheExpiry = TimeSpan.FromMinutes(configuration["ExchangeRateApi:CacheExpiryMinutes"] ?? 720);
     }
 
     public async Task<ExchangeRateResponse> GetRatesAsync(string baseCurrency)
