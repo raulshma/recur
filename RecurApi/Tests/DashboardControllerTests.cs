@@ -26,7 +26,8 @@ public class DashboardControllerTests : IDisposable
 
         _context = new RecurDbContext(options);
         _currencyService = new MockCurrencyConversionService();
-        _controller = new DashboardController(_context, _currencyService);
+        var logger = new Microsoft.Extensions.Logging.Abstractions.NullLogger<DashboardController>();
+        _controller = new DashboardController(_context, _currencyService, logger);
 
         // Setup user context
         var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
@@ -48,7 +49,7 @@ public class DashboardControllerTests : IDisposable
         {
             Id = "test-user-id",
             Email = "test@example.com",
-            PreferredCurrency = "USD"
+            Currency = "USD"
         };
 
         var category = new Category
@@ -178,11 +179,11 @@ public class MockCurrencyConversionService : ICurrencyConversionService
         return Task.FromResult(rates);
     }
 
-    public Task<CurrencyConversionResult> ConvertWithMetadataAsync(decimal amount, string fromCurrency, string toCurrency)
+    public Task<Services.CurrencyConversionResult> ConvertWithMetadataAsync(decimal amount, string fromCurrency, string toCurrency)
     {
         var convertedAmount = fromCurrency == "EUR" && toCurrency == "USD" ? amount * 1.1m : amount;
         
-        return Task.FromResult(new CurrencyConversionResult
+        return Task.FromResult(new Services.CurrencyConversionResult
         {
             ConvertedAmount = convertedAmount,
             ExchangeRate = fromCurrency == "EUR" && toCurrency == "USD" ? 1.1m : 1.0m,
@@ -191,5 +192,64 @@ public class MockCurrencyConversionService : ICurrencyConversionService
             FromCurrency = fromCurrency,
             ToCurrency = toCurrency
         });
+    }
+
+    public Task<List<Services.CurrencyConversionResult>> BatchConvertAsync(List<BatchConversionRequest> requests)
+    {
+        var results = new List<Services.CurrencyConversionResult>();
+        foreach (var request in requests)
+        {
+            var convertedAmount = request.FromCurrency == "EUR" && request.ToCurrency == "USD" ? request.Amount * 1.1m : request.Amount;
+            results.Add(new Services.CurrencyConversionResult
+            {
+                ConvertedAmount = convertedAmount,
+                ExchangeRate = request.FromCurrency == "EUR" && request.ToCurrency == "USD" ? 1.1m : 1.0m,
+                RateTimestamp = DateTime.UtcNow,
+                IsStale = false,
+                FromCurrency = request.FromCurrency,
+                ToCurrency = request.ToCurrency
+            });
+        }
+        return Task.FromResult(results);
+    }
+
+    public Task<List<Services.CurrencyConversionResult>> BatchConvertWithOptimizationAsync(List<BatchConversionRequest> requests)
+    {
+        return BatchConvertAsync(requests);
+    }
+
+    public Task<Dictionary<string, decimal>> GetOptimizedExchangeRatesAsync(string baseCurrency, HashSet<string> targetCurrencies)
+    {
+        var rates = new Dictionary<string, decimal>();
+        foreach (var currency in targetCurrencies)
+        {
+            rates[currency] = baseCurrency == "EUR" && currency == "USD" ? 1.1m : 1.0m;
+        }
+        return Task.FromResult(rates);
+    }
+
+    public Task WarmCacheForCommonCurrencyPairsAsync(string baseCurrency)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task<Dictionary<string, decimal>> GetFrequentlyUsedRatesAsync(string baseCurrency)
+    {
+        var rates = new Dictionary<string, decimal>
+        {
+            ["USD"] = baseCurrency == "EUR" ? 1.1m : 1.0m,
+            ["EUR"] = baseCurrency == "USD" ? 0.91m : 1.0m
+        };
+        return Task.FromResult(rates);
+    }
+
+    public Task CleanupExpiredCacheEntriesAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task PreloadCurrencyPairsAsync(List<(string from, string to)> currencyPairs)
+    {
+        return Task.CompletedTask;
     }
 }

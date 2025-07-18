@@ -93,6 +93,10 @@
   - _Requirements: 5.1, 5.2, 5.4_
 
 - [ ] 14. Create comprehensive unit tests for backend services
+
+
+
+
   - Write tests for CurrencyConversionService with various scenarios
   - Test ExchangeRateProvider with mock API responses
   - Create tests for caching mechanisms and cache expiration

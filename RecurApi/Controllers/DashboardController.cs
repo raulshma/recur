@@ -79,8 +79,7 @@ public class DashboardController : ControllerBase
                     {
                         Amount = g.Sum(s => s.GetMonthlyCost()),
                         FromCurrency = g.Key,
-                        ToCurrency = targetCurrency,
-                        RequestId = $"dashboard_{g.Key}"
+                        ToCurrency = targetCurrency
                     })
                     .ToList();
 

@@ -263,16 +263,6 @@ public class SpendingPatternsDto
     public string PeakSpendingMonth { get; set; } = string.Empty;
 }
 
-public class CurrencyConversionResult
-{
-    public decimal ConvertedAmount { get; set; }
-    public decimal ExchangeRate { get; set; }
-    public DateTime RateTimestamp { get; set; }
-    public bool IsStale { get; set; }
-    public string FromCurrency { get; set; } = string.Empty;
-    public string ToCurrency { get; set; } = string.Empty;
-}
-
 public class CurrencyBreakdown
 {
     public string Currency { get; set; } = string.Empty;

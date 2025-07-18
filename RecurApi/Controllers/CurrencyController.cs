@@ -271,8 +271,7 @@ public class CurrencyController : ControllerBase
                 {
                     Amount = conversion.Amount,
                     FromCurrency = fromCurrency,
-                    ToCurrency = toCurrency,
-                    RequestId = i.ToString() // Track original index
+                    ToCurrency = toCurrency
                 });
             }
 
@@ -295,14 +294,15 @@ public class CurrencyController : ControllerBase
                 }
                 
                 // Add batch conversion results
-                for (int i = 0; i < batchResults.Count; i++)
+                int batchIndex = 0;
+                for (int i = 0; i < request.Conversions.Count; i++)
                 {
-                    var result = batchResults[i];
-                    var originalIndex = int.Parse(batchRequests[i].RequestId!);
+                    if (orderedResults[i] != null) continue; // Skip validation errors
                     
-                    orderedResults[originalIndex] = new CurrencyConversionResponseDto
+                    var result = batchResults[batchIndex];
+                    orderedResults[i] = new CurrencyConversionResponseDto
                     {
-                        OriginalAmount = batchRequests[i].Amount,
+                        OriginalAmount = batchRequests[batchIndex].Amount,
                         ConvertedAmount = result.ConvertedAmount,
                         FromCurrency = result.FromCurrency,
                         ToCurrency = result.ToCurrency,
@@ -318,6 +318,8 @@ public class CurrencyController : ControllerBase
                     {
                         hasAnyErrors = true;
                     }
+                    
+                    batchIndex++;
                 }
                 
                 results = orderedResults.ToList();
