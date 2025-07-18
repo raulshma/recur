@@ -1,139 +1,254 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useId, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { LoginRequest } from '../types';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { AuthLayout } from '../components/auth';
+import AuthHeader from '../components/auth/AuthHeader';
+import FormError from '../components/auth/FormError';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '../components/ui/form';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import { LoadingSpinner } from '../components/ui/loading-spinner';
+import { Checkbox } from '../components/ui/checkbox';
+import {
+  Card,
+  CardHeader,
+  CardContent,
+} from '../components/ui/card';
+import { useFocusManagement, useFocusTrap } from '../hooks/useFocusManagement';
+import { handleAuthError } from '../utils/auth-utils';
+import { useAuthRedirect } from '../hooks/useAuthRedirect';
+
+// Define the login form schema using Zod
+const loginFormSchema = z.object({
+  email: z
+    .string()
+    .min(1, { message: 'Email is required' })
+    .email({ message: 'Please enter a valid email address' }),
+  password: z
+    .string()
+    .min(1, { message: 'Password is required' }),
+  rememberMe: z.boolean().default(false),
+});
+
+// Type for the form values derived from the schema
+type LoginFormValues = z.infer<typeof loginFormSchema>;
 
 const LoginPage: React.FC = () => {
   const { login, loading } = useAuth();
-  const [formData, setFormData] = useState<LoginRequest>({
-    email: '',
-    password: '',
-    rememberMe: false,
+  const [authError, setAuthError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  
+  // Redirect authenticated users away from login page
+  useAuthRedirect({ redirectAuthenticated: true });
+  
+  // Generate unique IDs for form elements
+  const formId = useId();
+  const emailErrorId = `${formId}-email-error`;
+  const passwordErrorId = `${formId}-password-error`;
+  const authErrorId = `${formId}-auth-error`;
+
+  // Initialize React Hook Form with Zod validation
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      rememberMe: false,
+    },
   });
-  const [error, setError] = useState<string>('');
+  
+  // Focus management
+  const authErrorRef = useRef<HTMLDivElement>(null);
+  const formRef = useFocusTrap<HTMLFormElement>(true);
+  
+  // Set initial focus on email input
+  const emailInputRef = useFocusManagement<HTMLInputElement>(true, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
+  // Handle form submission
+  const onSubmit = async (values: LoginFormValues) => {
+    setAuthError(null);
+    
     try {
-      await login(formData);
+      // Convert form values to LoginRequest type
+      const loginData: LoginRequest = {
+        email: values.email,
+        password: values.password,
+        rememberMe: values.rememberMe,
+      };
+      
+      // Pass the rememberMe flag to the login function
+      await login(loginData);
+      
+      // On successful login, navigate to the dashboard
+      navigate('/dashboard');
+      
+      // Note: The backend should handle the rememberMe flag by:
+      // 1. Setting a longer expiration time for the JWT token
+      // 2. Storing the token in localStorage (already implemented)
+      // 3. Using the token to authenticate the user on subsequent requests (already implemented)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      // Use our utility function to handle authentication errors
+      handleAuthError(err, setAuthError, authErrorRef as React.RefObject<HTMLElement>);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="flex justify-center">
-            <div className="w-12 h-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">R</span>
-            </div>
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link
-              to="/register"
-              className="font-medium text-primary-600 hover:text-primary-500"
-            >
-              create a new account
-            </Link>
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-danger-50 border border-danger-200 text-danger-600 px-4 py-3 rounded-lg">
-              {error}
+    <AuthLayout>
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="pb-2">
+          <AuthHeader 
+            title="Sign in to your account"
+            subtitle="Or"
+            linkText="create a new account"
+            linkUrl="/register"
+          />
+        </CardHeader>
+        
+        <CardContent>
+          {authError && (
+            <div ref={authErrorRef} tabIndex={-1}>
+              <FormError 
+                id={authErrorId} 
+                message={authError} 
+                className="mb-6" 
+              />
             </div>
           )}
           
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="form-label">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your email"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="form-label">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your password"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="rememberMe"
-                name="rememberMe"
-                type="checkbox"
-                checked={formData.rememberMe}
-                onChange={handleChange}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
-            </div>
-
-            <div className="text-sm">
-              <a href="#" className="font-medium text-primary-600 hover:text-primary-500">
-                Forgot your password?
-              </a>
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full flex justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          <Form {...form}>
+            <form 
+              ref={formRef}
+              onSubmit={form.handleSubmit(onSubmit)} 
+              className="space-y-4"
+              aria-label="Login form"
+              noValidate
             >
-              {loading ? (
-                <div className="loading-spinner w-4 h-4"></div>
-              ) : (
-                'Sign in'
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel htmlFor={`${formId}-email`}>Email address</FormLabel>
+                    <FormControl>
+                      <Input 
+                        ref={emailInputRef}
+                        id={`${formId}-email`}
+                        placeholder="Enter your email" 
+                        type="email"
+                        autoComplete="email"
+                        className="sm:text-sm"
+                        aria-required="true"
+                        aria-invalid={!!fieldState.error}
+                        aria-describedby={fieldState.error ? emailErrorId : undefined}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage id={emailErrorId} />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel htmlFor={`${formId}-password`}>Password</FormLabel>
+                    <FormControl>
+                      <Input 
+                        id={`${formId}-password`}
+                        placeholder="Enter your password" 
+                        type="password"
+                        autoComplete="current-password"
+                        className="sm:text-sm"
+                        aria-required="true"
+                        aria-invalid={!!fieldState.error}
+                        aria-describedby={fieldState.error ? passwordErrorId : undefined}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage id={passwordErrorId} />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
+                <FormField
+                  control={form.control}
+                  name="rememberMe"
+                  render={({ field }) => {
+                    const checkboxId = `${formId}-remember-me`;
+                    return (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            id={checkboxId}
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            aria-label="Remember me"
+                          />
+                        </FormControl>
+                        <FormLabel 
+                          htmlFor={checkboxId} 
+                          className="text-sm font-medium"
+                        >
+                          Remember me
+                        </FormLabel>
+                      </FormItem>
+                    );
+                  }}
+                />
+                
+                <Link 
+                  to="/forgot-password" 
+                  className="text-sm text-primary-600 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-sm"
+                  aria-label="Forgot your password? Reset it here"
+                >
+                  Forgot your password?
+                </Link>
+              </div>
+              
+              <Button 
+                type="submit" 
+                className="w-full mt-6" 
+                disabled={loading}
+                aria-label="Sign in to your account"
+                aria-busy={loading}
+              >
+                {loading ? <LoadingSpinner size="sm" className="mr-2" aria-hidden="true" /> : null}
+                Sign in
+              </Button>
+              
+              <div className="mt-4 text-center">
+                <p className="text-sm text-gray-600">
+                  Don't have an account?{' '}
+                  <Link 
+                    to="/register" 
+                    className="font-medium text-primary-600 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-sm"
+                    aria-label="Register for a new account"
+                  >
+                    Register now
+                  </Link>
+                </p>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </AuthLayout>
   );
 };
 
-export default LoginPage; 
+export { LoginPage };
+export default LoginPage;
