@@ -17,14 +17,16 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.6" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="Tests\**" />
-    <Content Remove="Tests\**" />
-    <EmbeddedResource Remove="Tests\**" />
-    <None Remove="Tests\**" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.6.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.6" />
   </ItemGroup>
 
 </Project>
