@@ -15,7 +15,7 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
     private readonly IServiceProvider _serviceProvider;
     private readonly string _apiKey;
     private readonly string _baseUrl = "https://v6.exchangerate-api.com/v6";
-    private readonly TimeSpan _cacheExpiry = TimeSpan.FromMinutes(configuration["ExchangeRateApi:CacheExpiryMinutes"] ?? 720);
+    private readonly TimeSpan _cacheExpiry;
 
     public ExchangeRateApiProvider(
         HttpClient httpClient, 
@@ -29,6 +29,7 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
         _memoryCache = memoryCache;
         _serviceProvider = serviceProvider;
         _apiKey = configuration["ExchangeRateApi:ApiKey"] ?? "demo"; // Use demo for development
+        _cacheExpiry = TimeSpan.FromMinutes(configuration["ExchangeRateApi:CacheExpiryMinutes"] ?? 720)
     }
 
     public async Task<ExchangeRateResponse> GetRatesAsync(string baseCurrency)
