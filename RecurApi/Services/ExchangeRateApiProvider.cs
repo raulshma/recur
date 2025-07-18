@@ -15,7 +15,7 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
     private readonly IServiceProvider _serviceProvider;
     private readonly string _apiKey;
     private readonly string _baseUrl = "https://v6.exchangerate-api.com/v6";
-    private readonly TimeSpan _cacheExpiry = TimeSpan.FromHours(1);
+    private readonly TimeSpan _cacheExpiry = TimeSpan.FromMinutes(configuration["ExchangeRateApi:CacheExpiryMinutes"] ?? 720);
 
     public ExchangeRateApiProvider(
         HttpClient httpClient, 
