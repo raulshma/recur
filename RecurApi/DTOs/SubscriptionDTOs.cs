@@ -185,6 +185,7 @@ public class MonthlySpendingDto
 {
     public string Name { get; set; } = string.Empty;
     public decimal Value { get; set; }
+    public string Currency { get; set; } = "USD";
 }
 
 public class CategorySpendingDto
@@ -192,6 +193,7 @@ public class CategorySpendingDto
     public string Name { get; set; } = string.Empty;
     public decimal Value { get; set; }
     public string Color { get; set; } = string.Empty;
+    public string Currency { get; set; } = "USD";
 }
 
 public class UpcomingBillDto
@@ -227,12 +229,14 @@ public class AnalyticsOverviewDto
     public int ActiveSubscriptions { get; set; }
     public decimal SavingsPotential { get; set; }
     public string TimeRange { get; set; } = string.Empty;
+    public string DisplayCurrency { get; set; } = "USD";
 }
 
 public class YearlyComparisonDto
 {
     public string Year { get; set; } = string.Empty;
     public decimal Value { get; set; }
+    public string Currency { get; set; } = "USD";
 }
 
 public class TopSubscriptionDto
@@ -240,10 +244,13 @@ public class TopSubscriptionDto
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public decimal Cost { get; set; }
+    public decimal OriginalCost { get; set; }
+    public string OriginalCurrency { get; set; } = string.Empty;
     public string CategoryName { get; set; } = string.Empty;
     public string CategoryColor { get; set; } = string.Empty;
     public string BillingCycle { get; set; } = string.Empty;
     public string Trend { get; set; } = string.Empty; // "up", "down", "stable"
+    public string Currency { get; set; } = "USD";
 }
 
 public class InsightDto
@@ -253,6 +260,7 @@ public class InsightDto
     public string Description { get; set; } = string.Empty;
     public decimal Savings { get; set; }
     public string Action { get; set; } = string.Empty;
+    public string Currency { get; set; } = "USD";
 }
 
 public class SpendingPatternsDto

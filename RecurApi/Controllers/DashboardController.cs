@@ -416,24 +416,24 @@ public class DashboardController : ControllerBase
                 var originalAmount = currencyGroup.Sum(s => s.GetMonthlyCost());
                 var convertedAmount = originalAmount;
 
-                // Convert to target currency if different using pre-fetched rates
+                // Convert to target currency if different
                 if (currencyGroup.Key != targetCurrency)
                 {
-                    if (exchangeRates.TryGetValue(currencyGroup.Key, out var rate))
+                    try
                     {
-                        convertedAmount = originalAmount * rate;
+                        // Always use the ConvertAsync method to ensure correct conversion
+                        convertedAmount = await _currencyConversionService.ConvertAsync(
+                            originalAmount, currencyGroup.Key, targetCurrency);
+                        
+                        _logger.LogInformation("Category Spending: Converted {OriginalAmount} {FromCurrency} to {ConvertedAmount} {ToCurrency}",
+                            originalAmount, currencyGroup.Key, convertedAmount, targetCurrency);
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        try
-                        {
-                            convertedAmount = await _currencyConversionService.ConvertAsync(
-                                originalAmount, currencyGroup.Key, targetCurrency);
-                        }
-                        catch
-                        {
-                            convertedAmount = originalAmount;
-                        }
+                        _logger.LogError(ex, "Category Spending: Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency}", 
+                            originalAmount, currencyGroup.Key, targetCurrency);
+                        // Use original as fallback
+                        convertedAmount = originalAmount;
                     }
                 }
 
@@ -444,7 +444,8 @@ public class DashboardController : ControllerBase
             {
                 Name = categoryGroup.Key.Name,
                 Value = totalConvertedAmount,
-                Color = categoryGroup.Key.Color
+                Color = categoryGroup.Key.Color,
+                Currency = targetCurrency
             });
         }
 
@@ -547,7 +548,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("analytics/overview")]
-    public async Task<ActionResult<AnalyticsOverviewDto>> GetAnalyticsOverview([FromQuery] string timeRange = "12months")
+    public async Task<ActionResult<AnalyticsOverviewDto>> GetAnalyticsOverview([FromQuery] string timeRange = "12months", [FromQuery] string? displayCurrency = null)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -565,37 +566,146 @@ public class DashboardController : ControllerBase
             _ => currentDate.AddMonths(-12)
         };
 
+        // Get user's preferred currency or default to USD
+        var user = await _context.Users.FindAsync(userId);
+        var targetCurrency = displayCurrency ?? user?.Currency ?? "USD";
+
         var subscriptions = await _context.Subscriptions
             .Where(s => s.UserId == userId && s.CreatedAt >= startDate)
             .Include(s => s.Category)
             .ToListAsync();
 
         var activeSubscriptions = subscriptions.Where(s => s.IsActive).ToList();
-        var totalSpent = subscriptions.Sum(s => s.GetMonthlyCost() * 
-            (decimal)Math.Max(1, (currentDate - s.CreatedAt).TotalDays / 30.44)); // Average days per month
-
-        var monthlyAverage = activeSubscriptions.Sum(s => s.GetMonthlyCost());
         
-        // Calculate savings potential (inactive subscriptions that were recently active)
-        var recentlyInactive = subscriptions
+        // Group subscriptions by currency for conversion
+        var currencyGroups = subscriptions.GroupBy(s => s.Currency).ToList();
+        decimal totalConvertedSpent = 0;
+        decimal totalConvertedMonthlyAverage = 0;
+        decimal totalConvertedSavingsPotential = 0;
+
+        // Warm cache for common currency pairs to improve performance
+        await _currencyConversionService.WarmCacheForCommonCurrencyPairsAsync(targetCurrency);
+
+        // Get unique currencies for batch conversion
+        var uniqueCurrencies = currencyGroups.Select(g => g.Key).Where(c => c != targetCurrency).ToHashSet();
+        
+        // Pre-fetch exchange rates for all currencies
+        var exchangeRates = await _currencyConversionService.GetOptimizedExchangeRatesAsync(targetCurrency, uniqueCurrencies);
+
+        // Calculate total spent with currency conversion
+        foreach (var group in currencyGroups)
+        {
+            var originalSpent = group.Sum(s => s.GetMonthlyCost() * 
+                (decimal)Math.Max(1, (currentDate - s.CreatedAt).TotalDays / 30.44));
+            
+            var convertedSpent = originalSpent;
+            
+            // Convert if needed
+            if (group.Key != targetCurrency)
+            {
+                try
+                {
+                    // Always use the ConvertAsync method to ensure correct conversion
+                    convertedSpent = await _currencyConversionService.ConvertAsync(
+                        originalSpent, group.Key, targetCurrency);
+                    
+                    _logger.LogInformation("Converted {OriginalAmount} {FromCurrency} to {ConvertedAmount} {ToCurrency} for analytics",
+                        originalSpent, group.Key, convertedSpent, targetCurrency);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency}", 
+                        originalSpent, group.Key, targetCurrency);
+                    // Use original as fallback
+                    convertedSpent = originalSpent;
+                }
+            }
+            
+            totalConvertedSpent += convertedSpent;
+        }
+
+        // Calculate monthly average with currency conversion
+        var activeGroups = activeSubscriptions.GroupBy(s => s.Currency).ToList();
+        foreach (var group in activeGroups)
+        {
+            var originalMonthly = group.Sum(s => s.GetMonthlyCost());
+            var convertedMonthly = originalMonthly;
+            
+            // Convert if needed
+            if (group.Key != targetCurrency)
+            {
+                try
+                {
+                    // Always use the ConvertAsync method to ensure correct conversion
+                    convertedMonthly = await _currencyConversionService.ConvertAsync(
+                        originalMonthly, group.Key, targetCurrency);
+                    
+                    _logger.LogInformation("Converted {OriginalAmount} {FromCurrency} to {ConvertedAmount} {ToCurrency} for monthly average",
+                        originalMonthly, group.Key, convertedMonthly, targetCurrency);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency}", 
+                        originalMonthly, group.Key, targetCurrency);
+                    // Use original as fallback
+                    convertedMonthly = originalMonthly;
+                }
+            }
+            
+            totalConvertedMonthlyAverage += convertedMonthly;
+        }
+        
+        // Calculate savings potential with currency conversion
+        var recentlyInactiveGroups = subscriptions
             .Where(s => !s.IsActive && s.CancellationDate.HasValue && 
                        s.CancellationDate.Value >= currentDate.AddMonths(-1))
-            .Sum(s => s.GetMonthlyCost());
+            .GroupBy(s => s.Currency)
+            .ToList();
+            
+        foreach (var group in recentlyInactiveGroups)
+        {
+            var originalSavings = group.Sum(s => s.GetMonthlyCost());
+            var convertedSavings = originalSavings;
+            
+            // Convert if needed
+            if (group.Key != targetCurrency)
+            {
+                try
+                {
+                    // Always use the ConvertAsync method to ensure correct conversion
+                    convertedSavings = await _currencyConversionService.ConvertAsync(
+                        originalSavings, group.Key, targetCurrency);
+                    
+                    _logger.LogInformation("Converted {OriginalAmount} {FromCurrency} to {ConvertedAmount} {ToCurrency} for savings potential",
+                        originalSavings, group.Key, convertedSavings, targetCurrency);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency}", 
+                        originalSavings, group.Key, targetCurrency);
+                    // Use original as fallback
+                    convertedSavings = originalSavings;
+                }
+            }
+            
+            totalConvertedSavingsPotential += convertedSavings;
+        }
 
         var overview = new AnalyticsOverviewDto
         {
-            TotalSpent = totalSpent,
-            MonthlyAverage = monthlyAverage,
+            TotalSpent = totalConvertedSpent,
+            MonthlyAverage = totalConvertedMonthlyAverage,
             ActiveSubscriptions = activeSubscriptions.Count,
-            SavingsPotential = recentlyInactive,
-            TimeRange = timeRange
+            SavingsPotential = totalConvertedSavingsPotential,
+            TimeRange = timeRange,
+            DisplayCurrency = targetCurrency
         };
 
         return Ok(overview);
     }
 
     [HttpGet("analytics/monthly-spending-extended")]
-    public async Task<ActionResult<IEnumerable<MonthlySpendingDto>>> GetExtendedMonthlySpending([FromQuery] string timeRange = "12months")
+    public async Task<ActionResult<IEnumerable<MonthlySpendingDto>>> GetExtendedMonthlySpending([FromQuery] string timeRange = "12months", [FromQuery] string? displayCurrency = null)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -612,12 +722,20 @@ public class DashboardController : ControllerBase
             _ => 12
         };
 
+        // Get user's preferred currency or default to USD
+        var user = await _context.Users.FindAsync(userId);
+        var targetCurrency = displayCurrency ?? user?.Currency ?? "USD";
+
         var subscriptions = await _context.Subscriptions
             .Where(s => s.UserId == userId)
             .ToListAsync();
 
         var monthlyData = new List<MonthlySpendingDto>();
         var currentDate = DateTime.UtcNow;
+
+        // Pre-fetch exchange rates for all unique currencies
+        var uniqueCurrencies = subscriptions.Select(s => s.Currency).Where(c => c != targetCurrency).Distinct().ToHashSet();
+        var exchangeRates = await _currencyConversionService.GetOptimizedExchangeRatesAsync(targetCurrency, uniqueCurrencies);
 
         for (int i = months - 1; i >= 0; i--)
         {
@@ -629,12 +747,44 @@ public class DashboardController : ControllerBase
                            (!s.CancellationDate.HasValue || s.CancellationDate.Value >= targetDate))
                 .ToList();
 
-            var monthlySpending = activeSubscriptions.Sum(s => s.GetMonthlyCost());
+            // Group by currency for conversion
+            var currencyGroups = activeSubscriptions.GroupBy(s => s.Currency).ToList();
+            decimal totalConvertedSpending = 0;
+
+            foreach (var group in currencyGroups)
+            {
+                var originalAmount = group.Sum(s => s.GetMonthlyCost());
+                var convertedAmount = originalAmount;
+                
+                // Convert if needed
+                if (group.Key != targetCurrency)
+                {
+                    try
+                    {
+                        // Always use the ConvertAsync method to ensure correct conversion
+                        convertedAmount = await _currencyConversionService.ConvertAsync(
+                            originalAmount, group.Key, targetCurrency);
+                        
+                        _logger.LogInformation("Monthly Spending: Converted {OriginalAmount} {FromCurrency} to {ConvertedAmount} {ToCurrency}",
+                            originalAmount, group.Key, convertedAmount, targetCurrency);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Monthly Spending: Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency}", 
+                            originalAmount, group.Key, targetCurrency);
+                        // Use original as fallback
+                        convertedAmount = originalAmount;
+                    }
+                }
+                
+                totalConvertedSpending += convertedAmount;
+            }
 
             monthlyData.Add(new MonthlySpendingDto
             {
                 Name = monthName,
-                Value = monthlySpending
+                Value = totalConvertedSpending,
+                Currency = targetCurrency
             });
         }
 
@@ -642,7 +792,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("analytics/yearly-comparison")]
-    public async Task<ActionResult<IEnumerable<YearlyComparisonDto>>> GetYearlyComparison()
+    public async Task<ActionResult<IEnumerable<YearlyComparisonDto>>> GetYearlyComparison([FromQuery] string? displayCurrency = null)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -650,9 +800,17 @@ public class DashboardController : ControllerBase
             return Unauthorized();
         }
 
+        // Get user's preferred currency or default to USD
+        var user = await _context.Users.FindAsync(userId);
+        var targetCurrency = displayCurrency ?? user?.Currency ?? "USD";
+
         var subscriptions = await _context.Subscriptions
             .Where(s => s.UserId == userId)
             .ToListAsync();
+
+        // Pre-fetch exchange rates for all unique currencies
+        var uniqueCurrencies = subscriptions.Select(s => s.Currency).Where(c => c != targetCurrency).Distinct().ToHashSet();
+        var exchangeRates = await _currencyConversionService.GetOptimizedExchangeRatesAsync(targetCurrency, uniqueCurrencies);
 
         var currentYear = DateTime.UtcNow.Year;
         var yearlyData = new List<YearlyComparisonDto>();
@@ -662,15 +820,49 @@ public class DashboardController : ControllerBase
             var yearStart = new DateTime(year, 1, 1);
             var yearEnd = new DateTime(year, 12, 31);
 
-            var yearlySpending = subscriptions
+            var yearSubscriptions = subscriptions
                 .Where(s => s.CreatedAt <= yearEnd && 
                            (!s.CancellationDate.HasValue || s.CancellationDate.Value >= yearStart))
-                .Sum(s => s.GetMonthlyCost() * 12); // Annualized
+                .ToList();
+                
+            // Group by currency for conversion
+            var currencyGroups = yearSubscriptions.GroupBy(s => s.Currency).ToList();
+            decimal totalConvertedYearlySpending = 0;
+
+            foreach (var group in currencyGroups)
+            {
+                var originalAmount = group.Sum(s => s.GetMonthlyCost() * 12); // Annualized
+                var convertedAmount = originalAmount;
+                
+                // Convert if needed
+                if (group.Key != targetCurrency)
+                {
+                    try
+                    {
+                        // Always use the ConvertAsync method to ensure correct conversion
+                        convertedAmount = await _currencyConversionService.ConvertAsync(
+                            originalAmount, group.Key, targetCurrency);
+                        
+                        _logger.LogInformation("Yearly Comparison: Converted {OriginalAmount} {FromCurrency} to {ConvertedAmount} {ToCurrency}",
+                            originalAmount, group.Key, convertedAmount, targetCurrency);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Yearly Comparison: Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency}", 
+                            originalAmount, group.Key, targetCurrency);
+                        // Use original as fallback
+                        convertedAmount = originalAmount;
+                    }
+                }
+                
+                totalConvertedYearlySpending += convertedAmount;
+            }
 
             yearlyData.Add(new YearlyComparisonDto
             {
                 Year = year.ToString(),
-                Value = yearlySpending
+                Value = totalConvertedYearlySpending,
+                Currency = targetCurrency
             });
         }
 
@@ -678,7 +870,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("analytics/top-subscriptions")]
-    public async Task<ActionResult<IEnumerable<TopSubscriptionDto>>> GetTopSubscriptions()
+    public async Task<ActionResult<IEnumerable<TopSubscriptionDto>>> GetTopSubscriptions([FromQuery] string? displayCurrency = null)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -686,31 +878,70 @@ public class DashboardController : ControllerBase
             return Unauthorized();
         }
 
+        // Get user's preferred currency or default to USD
+        var user = await _context.Users.FindAsync(userId);
+        var targetCurrency = displayCurrency ?? user?.Currency ?? "USD";
+
         var subscriptions = await _context.Subscriptions
             .Where(s => s.UserId == userId && s.IsActive)
             .Include(s => s.Category)
+            .ToListAsync();
+            
+        // Sort by cost after conversion
+        var topSubscriptionsWithConversion = new List<TopSubscriptionDto>();
+        
+        foreach (var subscription in subscriptions)
+        {
+            var originalCost = subscription.GetMonthlyCost();
+            var convertedCost = originalCost;
+            
+            // Convert if needed
+            if (subscription.Currency != targetCurrency)
+            {
+                try
+                {
+                    // Always use the ConvertAsync method to ensure correct conversion
+                    convertedCost = await _currencyConversionService.ConvertAsync(
+                        originalCost, subscription.Currency, targetCurrency);
+                    
+                    _logger.LogInformation("Top Subscriptions: Converted {OriginalAmount} {FromCurrency} to {ConvertedAmount} {ToCurrency}",
+                        originalCost, subscription.Currency, convertedCost, targetCurrency);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Top Subscriptions: Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency}", 
+                        originalCost, subscription.Currency, targetCurrency);
+                    // Use original as fallback
+                    convertedCost = originalCost;
+                }
+            }
+            
+            topSubscriptionsWithConversion.Add(new TopSubscriptionDto
+            {
+                Id = subscription.Id,
+                Name = subscription.Name,
+                Cost = convertedCost,
+                OriginalCost = originalCost,
+                OriginalCurrency = subscription.Currency,
+                CategoryName = subscription.Category.Name,
+                CategoryColor = subscription.Category.Color,
+                BillingCycle = subscription.BillingCycle.ToString(),
+                Trend = "stable", // Could be enhanced with historical data
+                Currency = targetCurrency
+            });
+        }
+
+        // Sort by converted cost and take top 10
+        var topSubscriptions = topSubscriptionsWithConversion
             .OrderByDescending(s => s.Cost)
             .Take(10)
-            .ToListAsync();
-
-        var topSubscriptions = subscriptions
-            .Select(s => new TopSubscriptionDto
-            {
-                Id = s.Id,
-                Name = s.Name,
-                Cost = s.GetMonthlyCost(),
-                CategoryName = s.Category.Name,
-                CategoryColor = s.Category.Color,
-                BillingCycle = s.BillingCycle.ToString(),
-                Trend = "stable" // Could be enhanced with historical data
-            })
             .ToList();
 
         return Ok(topSubscriptions);
     }
 
     [HttpGet("analytics/insights")]
-    public async Task<ActionResult<IEnumerable<InsightDto>>> GetInsights()
+    public async Task<ActionResult<IEnumerable<InsightDto>>> GetInsights([FromQuery] string? displayCurrency = null)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -718,10 +949,18 @@ public class DashboardController : ControllerBase
             return Unauthorized();
         }
 
+        // Get user's preferred currency or default to USD
+        var user = await _context.Users.FindAsync(userId);
+        var targetCurrency = displayCurrency ?? user?.Currency ?? "USD";
+
         var subscriptions = await _context.Subscriptions
             .Where(s => s.UserId == userId)
             .Include(s => s.Category)
             .ToListAsync();
+
+        // Pre-fetch exchange rates for all unique currencies
+        var uniqueCurrencies = subscriptions.Select(s => s.Currency).Where(c => c != targetCurrency).Distinct().ToHashSet();
+        var exchangeRates = await _currencyConversionService.GetOptimizedExchangeRatesAsync(targetCurrency, uniqueCurrencies);
 
         var insights = new List<InsightDto>();
         var currentDate = DateTime.UtcNow;
@@ -735,21 +974,84 @@ public class DashboardController : ControllerBase
 
         foreach (var group in categoryGroups)
         {
-            var potentialSavings = group.Skip(1).Sum(s => s.GetMonthlyCost());
+            // Group by currency for conversion
+            var currencyGroups = group.Skip(1).GroupBy(s => s.Currency).ToList();
+            decimal totalConvertedSavings = 0;
+
+            foreach (var currencyGroup in currencyGroups)
+            {
+                var originalAmount = currencyGroup.Sum(s => s.GetMonthlyCost());
+                var convertedAmount = originalAmount;
+                
+                // Convert if needed
+                if (currencyGroup.Key != targetCurrency)
+                {
+                    try
+                    {
+                        // Always use the ConvertAsync method to ensure correct conversion
+                        convertedAmount = await _currencyConversionService.ConvertAsync(
+                            originalAmount, currencyGroup.Key, targetCurrency);
+                        
+                        _logger.LogInformation("Insights: Converted {OriginalAmount} {FromCurrency} to {ConvertedAmount} {ToCurrency}",
+                            originalAmount, currencyGroup.Key, convertedAmount, targetCurrency);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Insights: Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency}", 
+                            originalAmount, currencyGroup.Key, targetCurrency);
+                        // Use original as fallback
+                        convertedAmount = originalAmount;
+                    }
+                }
+                
+                totalConvertedSavings += convertedAmount;
+            }
+
             insights.Add(new InsightDto
             {
                 Type = "warning",
                 Title = $"Multiple {group.Key} Services",
                 Description = $"You have {group.Count()} active {group.Key.ToLower()} subscriptions. Consider consolidating.",
-                Savings = potentialSavings,
-                Action = "Review Services"
+                Savings = totalConvertedSavings,
+                Action = "Review Services",
+                Currency = targetCurrency
             });
         }
 
-        // Check for expensive subscriptions
-        var expensiveSubscriptions = subscriptions
-            .Where(s => s.IsActive && s.GetMonthlyCost() > 50)
-            .ToList();
+        // Check for expensive subscriptions - use converted amounts for threshold
+        var expensiveSubscriptions = new List<(Models.Subscription subscription, decimal convertedCost)>();
+        
+        foreach (var subscription in subscriptions.Where(s => s.IsActive))
+        {
+            var originalCost = subscription.GetMonthlyCost();
+            var convertedCost = originalCost;
+            
+            // Convert if needed
+            if (subscription.Currency != targetCurrency)
+            {
+                try
+                {
+                    // Always use the ConvertAsync method to ensure correct conversion
+                    convertedCost = await _currencyConversionService.ConvertAsync(
+                        originalCost, subscription.Currency, targetCurrency);
+                    
+                    _logger.LogInformation("Expensive Subscriptions: Converted {OriginalAmount} {FromCurrency} to {ConvertedAmount} {ToCurrency}",
+                        originalCost, subscription.Currency, convertedCost, targetCurrency);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Expensive Subscriptions: Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency}", 
+                        originalCost, subscription.Currency, targetCurrency);
+                    // Use original as fallback
+                    convertedCost = originalCost;
+                }
+            }
+            
+            if (convertedCost > 50) // Use converted cost for threshold
+            {
+                expensiveSubscriptions.Add((subscription, convertedCost));
+            }
+        }
 
         if (expensiveSubscriptions.Any())
         {
@@ -757,9 +1059,10 @@ public class DashboardController : ControllerBase
             {
                 Type = "info",
                 Title = "High-Cost Subscriptions",
-                Description = $"You have {expensiveSubscriptions.Count} subscriptions over $50/month.",
+                Description = $"You have {expensiveSubscriptions.Count} subscriptions over {formatCurrency(50, targetCurrency)}/month.",
                 Savings = 0,
-                Action = "Review Pricing"
+                Action = "Review Pricing",
+                Currency = targetCurrency
             });
         }
 
@@ -771,17 +1074,97 @@ public class DashboardController : ControllerBase
 
         if (endingTrials.Any())
         {
+            // Group by currency for conversion
+            var trialGroups = endingTrials.GroupBy(s => s.Currency).ToList();
+            decimal totalConvertedTrialSavings = 0;
+
+            foreach (var trialGroup in trialGroups)
+            {
+                var originalAmount = trialGroup.Sum(s => s.GetMonthlyCost());
+                var convertedAmount = originalAmount;
+                
+                // Convert if needed
+                if (trialGroup.Key != targetCurrency)
+                {
+                    try
+                    {
+                        // Always use the ConvertAsync method to ensure correct conversion
+                        convertedAmount = await _currencyConversionService.ConvertAsync(
+                            originalAmount, trialGroup.Key, targetCurrency);
+                        
+                        _logger.LogInformation("Trials Ending: Converted {OriginalAmount} {FromCurrency} to {ConvertedAmount} {ToCurrency}",
+                            originalAmount, trialGroup.Key, convertedAmount, targetCurrency);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Trials Ending: Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency}", 
+                            originalAmount, trialGroup.Key, targetCurrency);
+                        // Use original as fallback
+                        convertedAmount = originalAmount;
+                    }
+                }
+                
+                totalConvertedTrialSavings += convertedAmount;
+            }
+
             insights.Add(new InsightDto
             {
                 Type = "warning",
                 Title = "Trials Ending Soon",
                 Description = $"{endingTrials.Count} trial subscriptions are ending within 7 days.",
-                Savings = endingTrials.Sum(s => s.GetMonthlyCost()),
-                Action = "Review Trials"
+                Savings = totalConvertedTrialSavings,
+                Action = "Review Trials",
+                Currency = targetCurrency
             });
         }
 
         return Ok(insights.Take(5));
+    }
+    
+    // Helper method for formatting currency in descriptions
+    private string formatCurrency(decimal amount, string currency)
+    {
+        string symbol = currency switch
+        {
+            "USD" => "$",
+            "EUR" => "€",
+            "GBP" => "£",
+            "INR" => "₹",
+            "JPY" => "¥",
+            _ => "$"
+        };
+        
+        return $"{symbol}{amount}";
+    }
+    
+    // Debug endpoint to check exchange rates
+    [HttpGet("debug/exchange-rates")]
+    public async Task<ActionResult> GetExchangeRates([FromQuery] string fromCurrency = "USD", [FromQuery] string toCurrency = "INR")
+    {
+        try
+        {
+            // Get exchange rate
+            var result = await _currencyConversionService.ConvertWithMetadataAsync(1, fromCurrency, toCurrency);
+            
+            // Test conversion with a specific amount
+            var testAmount = 20.0m;
+            var convertedResult = await _currencyConversionService.ConvertWithMetadataAsync(testAmount, fromCurrency, toCurrency);
+            
+            return Ok(new
+            {
+                FromCurrency = fromCurrency,
+                ToCurrency = toCurrency,
+                ExchangeRate = result.ExchangeRate,
+                TestAmount = testAmount,
+                ConvertedAmount = convertedResult.ConvertedAmount,
+                Timestamp = result.RateTimestamp,
+                IsStale = result.IsStale
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = ex.Message });
+        }
     }
 
     [HttpGet("analytics/spending-patterns")]

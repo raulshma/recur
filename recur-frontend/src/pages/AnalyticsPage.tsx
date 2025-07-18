@@ -1,7 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { analyticsApi, type AnalyticsOverview, type MonthlySpending, type CategorySpending, type YearlyComparison, type TopSubscription, type Insight, type SpendingPatterns } from '../api/analytics';
-import { useAuth } from '../context/AuthContext';
-import { formatCurrency } from '../lib/utils';
+import React, { useState, useEffect } from "react";
+import {
+  analyticsApi,
+  type AnalyticsOverview,
+  type MonthlySpending,
+  type CategorySpending,
+  type YearlyComparison,
+  type TopSubscription,
+  type Insight,
+  type SpendingPatterns,
+} from "../api/analytics";
+import { useAuth } from "../context/AuthContext";
+import { formatCurrency } from "../lib/utils";
 import {
   ChartBarIcon,
   CurrencyDollarIcon,
@@ -9,120 +18,175 @@ import {
   ArrowTrendingDownIcon,
   CalendarDaysIcon,
   ArrowPathIcon,
-  FunnelIcon,
   ArrowDownTrayIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
   BanknotesIcon,
-} from '@heroicons/react/24/outline';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { StatsCard } from '@/components/ui/stats-card';
-import { MetricCard } from '@/components/ui/metric-card';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, LineChart, DonutChart } from '@/components/ui/chart';
-import { AreaChart } from '@/components/ui/area-chart';
-import { Progress } from '@/components/ui/progress';
-import { EmptyState } from '@/components/ui/empty-state';
+} from "@heroicons/react/24/outline";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { StatsCard } from "@/components/ui/stats-card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BarChart, DonutChart } from "@/components/ui/chart";
+import { Progress } from "@/components/ui/progress";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const AnalyticsPage: React.FC = () => {
   const { user } = useAuth();
-  const [timeRange, setTimeRange] = useState('12months');
-  const [activeTab, setActiveTab] = useState('overview');
+  const [timeRange, setTimeRange] = useState("12months");
+  const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // State for dynamic data
-  const [analyticsOverview, setAnalyticsOverview] = useState<AnalyticsOverview | null>(null);
-  const [monthlySpendingData, setMonthlySpendingData] = useState<MonthlySpending[]>([]);
+  const [analyticsOverview, setAnalyticsOverview] =
+    useState<AnalyticsOverview | null>(null);
+  const [monthlySpendingData, setMonthlySpendingData] = useState<
+    MonthlySpending[]
+  >([]);
   const [categoryData, setCategoryData] = useState<CategorySpending[]>([]);
-  const [yearlyComparisonData, setYearlyComparisonData] = useState<YearlyComparison[]>([]);
-  const [topSubscriptions, setTopSubscriptions] = useState<TopSubscription[]>([]);
+  const [yearlyComparisonData, setYearlyComparisonData] = useState<
+    YearlyComparison[]
+  >([]);
+  const [topSubscriptions, setTopSubscriptions] = useState<TopSubscription[]>(
+    []
+  );
   const [insights, setInsights] = useState<Insight[]>([]);
-  const [spendingPatterns, setSpendingPatterns] = useState<SpendingPatterns | null>(null);
+  const [spendingPatterns, setSpendingPatterns] =
+    useState<SpendingPatterns | null>(null);
+    const fetchAnalyticsData = React.useCallback(async () => {
+      try {
+        setLoading(true);
+        setError(null);
+  
+        // Use user's preferred currency for all API calls
+        const userCurrency = user?.currency || "USD";
+  
+        const [
+          overview,
+          monthlySpending,
+          categorySpending,
+          yearlyComparison,
+          topSubs,
+          analyticsInsights,
+          patterns,
+        ] = await Promise.all([
+          analyticsApi.getOverview(timeRange, userCurrency),
+          analyticsApi.getExtendedMonthlySpending(timeRange, userCurrency),
+          analyticsApi.getCategorySpending(userCurrency),
+          analyticsApi.getYearlyComparison(userCurrency),
+          analyticsApi.getTopSubscriptions(userCurrency),
+          analyticsApi.getInsights(userCurrency),
+          analyticsApi.getSpendingPatterns(userCurrency),
+        ]);
+  
+        setAnalyticsOverview(overview);
+        setMonthlySpendingData(monthlySpending);
+        setCategoryData(categorySpending);
+        setYearlyComparisonData(yearlyComparison);
+        setTopSubscriptions(topSubs);
+        setInsights(analyticsInsights);
+        setSpendingPatterns(patterns);
+      } catch (err) {
+        console.error("Failed to fetch analytics data:", err);
+        setError("Failed to load analytics data. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }, [timeRange, user?.currency]);
 
   useEffect(() => {
     fetchAnalyticsData();
-  }, [timeRange]);
+  }, [fetchAnalyticsData]);
 
-  const fetchAnalyticsData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [overview, monthlySpending, categorySpending, yearlyComparison, topSubs, analyticsInsights, patterns] = await Promise.all([
-        analyticsApi.getOverview(timeRange),
-        analyticsApi.getExtendedMonthlySpending(timeRange),
-        analyticsApi.getCategorySpending(),
-        analyticsApi.getYearlyComparison(),
-        analyticsApi.getTopSubscriptions(),
-        analyticsApi.getInsights(),
-        analyticsApi.getSpendingPatterns(),
-      ]);
-
-      setAnalyticsOverview(overview);
-      setMonthlySpendingData(monthlySpending);
-      setCategoryData(categorySpending);
-      setYearlyComparisonData(yearlyComparison);
-      setTopSubscriptions(topSubs);
-      setInsights(analyticsInsights);
-      setSpendingPatterns(patterns);
-    } catch (err) {
-      console.error('Failed to fetch analytics data:', err);
-      setError('Failed to load analytics data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Create stats array from API data - force re-render when user changes
-  const userCurrency = user?.currency || 'USD';
-  const overviewStats = analyticsOverview ? [
-    {
-      title: 'Total Spent',
-      value: formatCurrency(analyticsOverview.totalSpent, userCurrency),
-      change: { value: 0, type: 'neutral' as const, period: 'from last month' },
-      icon: <CurrencyDollarIcon className="h-6 w-6" />,
-    },
-    {
-      title: 'Monthly Average',
-      value: formatCurrency(analyticsOverview.monthlyAverage, userCurrency),
-      change: { value: 0, type: 'neutral' as const, period: 'from last month' },
-      icon: <ArrowTrendingUpIcon className="h-6 w-6" />,
-    },
-    {
-      title: 'Active Subscriptions',
-      value: analyticsOverview.activeSubscriptions.toString(),
-      change: { value: 0, type: 'neutral' as const, period: 'this month' },
-      icon: <ArrowPathIcon className="h-6 w-6" />,
-    },
-    {
-      title: 'Savings Potential',
-      value: formatCurrency(analyticsOverview.savingsPotential, userCurrency),
-      change: { value: 0, type: 'neutral' as const, period: 'unused services' },
-      icon: <BanknotesIcon className="h-6 w-6" />,
-    },
-  ] : [];
+  // Create stats array from API data - use the currency from the API response
+  // This ensures we're using the same currency that was used for conversion
+  const displayCurrency =
+    analyticsOverview?.displayCurrency || user?.currency || "USD";
+  const overviewStats = analyticsOverview
+    ? [
+        {
+          title: "Total Spent",
+          value: formatCurrency(analyticsOverview.totalSpent, displayCurrency),
+          change: {
+            value: 0,
+            type: "neutral" as const,
+            period: "from last month",
+          },
+          icon: <CurrencyDollarIcon className="h-6 w-6" />,
+        },
+        {
+          title: "Monthly Average",
+          value: formatCurrency(
+            analyticsOverview.monthlyAverage,
+            displayCurrency
+          ),
+          change: {
+            value: 0,
+            type: "neutral" as const,
+            period: "from last month",
+          },
+          icon: <ArrowTrendingUpIcon className="h-6 w-6" />,
+        },
+        {
+          title: "Active Subscriptions",
+          value: analyticsOverview.activeSubscriptions.toString(),
+          change: { value: 0, type: "neutral" as const, period: "this month" },
+          icon: <ArrowPathIcon className="h-6 w-6" />,
+        },
+        {
+          title: "Savings Potential",
+          value: formatCurrency(
+            analyticsOverview.savingsPotential,
+            displayCurrency
+          ),
+          change: {
+            value: 0,
+            type: "neutral" as const,
+            period: "unused services",
+          },
+          icon: <BanknotesIcon className="h-6 w-6" />,
+        },
+      ]
+    : [];
 
   // Transform yearly comparison data for chart
-  const yearlyComparisonChartData = yearlyComparisonData.length > 0 ? [
-    {
-      name: 'Yearly Comparison',
-      data: yearlyComparisonData.map(item => ({ name: item.year, value: item.value })),
-      color: '#FF6B35',
-    },
-  ] : [];
+  const yearlyComparisonChartData =
+    yearlyComparisonData.length > 0
+      ? [
+          {
+            name: "Yearly Comparison",
+            data: yearlyComparisonData.map((item) => ({
+              name: item.year,
+              value: item.value,
+            })),
+            color: "#FF6B35",
+          },
+        ]
+      : [];
 
   const getInsightIcon = (type: string) => {
     switch (type) {
-      case 'warning':
+      case "warning":
         return <ExclamationTriangleIcon className="h-5 w-5 text-orange-500" />;
-      case 'success':
+      case "success":
         return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
-      case 'info':
+      case "info":
       default:
         return <ClockIcon className="h-5 w-5 text-blue-500" />;
     }
@@ -130,23 +194,23 @@ const AnalyticsPage: React.FC = () => {
 
   const getInsightBadgeVariant = (type: string) => {
     switch (type) {
-      case 'warning':
-        return 'warning' as const;
-      case 'success':
-        return 'success' as const;
-      case 'info':
+      case "warning":
+        return "warning" as const;
+      case "success":
+        return "success" as const;
+      case "info":
       default:
-        return 'secondary' as const;
+        return "secondary" as const;
     }
   };
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case 'up':
+      case "up":
         return <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />;
-      case 'down':
+      case "down":
         return <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />;
-      case 'stable':
+      case "stable":
       default:
         return <div className="h-4 w-4 bg-gray-400 rounded-full" />;
     }
@@ -172,10 +236,7 @@ const AnalyticsPage: React.FC = () => {
           <div className="text-center">
             <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <p className="text-red-600">{error}</p>
-            <Button 
-              onClick={() => fetchAnalyticsData()} 
-              className="mt-4"
-            >
+            <Button onClick={() => fetchAnalyticsData()} className="mt-4">
               Try Again
             </Button>
           </div>
@@ -227,7 +288,11 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Main Analytics Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
@@ -251,7 +316,11 @@ const AnalyticsPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   {monthlySpendingData.length > 0 ? (
-                    <BarChart data={monthlySpendingData} height={300} showValues />
+                    <BarChart
+                      data={monthlySpendingData}
+                      height={300}
+                      showValues
+                    />
                   ) : (
                     <EmptyState
                       icon={<ChartBarIcon className="h-12 w-12" />}
@@ -267,9 +336,7 @@ const AnalyticsPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Spending by Category</CardTitle>
-                <CardDescription>
-                  How your money is distributed
-                </CardDescription>
+                <CardDescription>How your money is distributed</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center">
                 {categoryData.length > 0 ? (
@@ -277,15 +344,22 @@ const AnalyticsPage: React.FC = () => {
                     <DonutChart data={categoryData} size={200} />
                     <div className="mt-4 space-y-2 w-full">
                       {categoryData.map((category, index) => (
-                        <div key={index} className="flex items-center justify-between">
+                        <div
+                          key={index}
+                          className="flex items-center justify-between"
+                        >
                           <div className="flex items-center gap-2">
-                            <div 
+                            <div
                               className="w-3 h-3 rounded-full border border-black"
                               style={{ backgroundColor: category.color }}
                             />
-                            <span className="text-sm font-medium">{category.name}</span>
+                            <span className="text-sm font-medium">
+                              {category.name}
+                            </span>
                           </div>
-                          <span className="text-sm text-gray-600">{formatCurrency(category.value, userCurrency)}</span>
+                          <span className="text-sm text-gray-600">
+                            {formatCurrency(category.value, displayCurrency)}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -313,21 +387,46 @@ const AnalyticsPage: React.FC = () => {
               {topSubscriptions.length > 0 ? (
                 <div className="space-y-4">
                   {topSubscriptions.map((subscription, index) => (
-                    <div key={subscription.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div
+                      key={subscription.id}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                    >
                       <div className="flex items-center gap-3">
-                        <div className="text-lg font-bold text-gray-500">#{index + 1}</div>
-                        <div 
+                        <div className="text-lg font-bold text-gray-500">
+                          #{index + 1}
+                        </div>
+                        <div
                           className="w-3 h-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: subscription.categoryColor }}
+                          style={{
+                            backgroundColor: subscription.categoryColor,
+                          }}
                         />
                         <div>
                           <p className="font-medium">{subscription.name}</p>
-                          <p className="text-sm text-gray-600">{subscription.categoryName} - {subscription.billingCycle}</p>
+                          <p className="text-sm text-gray-600">
+                            {subscription.categoryName} -{" "}
+                            {subscription.billingCycle}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {getTrendIcon(subscription.trend)}
-                        <span className="font-bold">{formatCurrency(subscription.cost, userCurrency)}/mo</span>
+                        <span className="font-bold">
+                          {formatCurrency(subscription.cost, displayCurrency)}
+                          /mo
+                          {subscription.originalCurrency &&
+                            subscription.originalCurrency !==
+                              displayCurrency && (
+                              <span className="text-sm text-gray-500 ml-1">
+                                (
+                                {formatCurrency(
+                                  subscription.originalCost,
+                                  subscription.originalCurrency
+                                )}
+                                )
+                              </span>
+                            )}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -356,10 +455,10 @@ const AnalyticsPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 {yearlyComparisonChartData.length > 0 ? (
-                  <BarChart 
-                    data={yearlyComparisonChartData[0].data} 
-                    height={300} 
-                    showValues 
+                  <BarChart
+                    data={yearlyComparisonChartData[0].data}
+                    height={300}
+                    showValues
                   />
                 ) : (
                   <EmptyState
@@ -386,20 +485,34 @@ const AnalyticsPage: React.FC = () => {
                       <div key={index} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div 
+                            <div
                               className="w-3 h-3 rounded-full"
                               style={{ backgroundColor: category.color }}
                             />
                             <span className="font-medium">{category.name}</span>
                           </div>
-                          <span className="text-sm text-gray-600">{formatCurrency(category.value, userCurrency)}</span>
+                          <span className="text-sm text-gray-600">
+                            {formatCurrency(category.value, displayCurrency)}
+                          </span>
                         </div>
-                        <Progress 
-                          value={(category.value / Math.max(...categoryData.map(c => c.value))) * 100} 
-                          className="h-2" 
+                        <Progress
+                          value={
+                            (category.value /
+                              Math.max(...categoryData.map((c) => c.value))) *
+                            100
+                          }
+                          className="h-2"
                         />
                         <p className="text-xs text-gray-500">
-                          {((category.value / categoryData.reduce((sum, c) => sum + c.value, 0)) * 100).toFixed(1)}% of total spending
+                          {(
+                            (category.value /
+                              categoryData.reduce(
+                                (sum, c) => sum + c.value,
+                                0
+                              )) *
+                            100
+                          ).toFixed(1)}
+                          % of total spending
                         </p>
                       </div>
                     ))}
@@ -423,29 +536,39 @@ const AnalyticsPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Cost Optimization</CardTitle>
-                <CardDescription>
-                  Recommendations to save money
-                </CardDescription>
+                <CardDescription>Recommendations to save money</CardDescription>
               </CardHeader>
               <CardContent>
                 {insights.length > 0 ? (
                   <div className="space-y-4">
                     {insights.map((insight, index) => (
-                      <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                      <div
+                        key={index}
+                        className="p-4 border border-gray-200 rounded-lg"
+                      >
                         <div className="flex items-start gap-3">
                           {getInsightIcon(insight.type)}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h4 className="font-medium">{insight.title}</h4>
-                              <Badge variant={getInsightBadgeVariant(insight.type)}>
+                              <Badge
+                                variant={getInsightBadgeVariant(insight.type)}
+                              >
                                 {insight.type}
                               </Badge>
                             </div>
-                            <p className="text-sm text-gray-600 mb-3">{insight.description}</p>
+                            <p className="text-sm text-gray-600 mb-3">
+                              {insight.description}
+                            </p>
                             <div className="flex items-center justify-between">
                               {insight.savings > 0 && (
                                 <span className="text-sm font-medium text-green-600">
-                                  Save {formatCurrency(insight.savings, userCurrency)}/month
+                                  Save{" "}
+                                  {formatCurrency(
+                                    insight.savings,
+                                    displayCurrency
+                                  )}
+                                  /month
                                 </span>
                               )}
                               <Button variant="outline" size="sm">
@@ -480,26 +603,43 @@ const AnalyticsPage: React.FC = () => {
                   <div className="space-y-6">
                     <div>
                       <h4 className="font-medium mb-2">Most Active Day</h4>
-                      <p className="text-2xl font-bold text-blue-600">{spendingPatterns.mostActiveDay}th</p>
-                      <p className="text-sm text-gray-600">Most renewals happen on this day</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {spendingPatterns.mostActiveDay}th
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Most renewals happen on this day
+                      </p>
                     </div>
-                    
+
                     <div>
                       <h4 className="font-medium mb-2">Average Service Life</h4>
-                      <p className="text-2xl font-bold text-green-600">{spendingPatterns.averageServiceLifeMonths.toFixed(1)} months</p>
-                      <p className="text-sm text-gray-600">How long you keep subscriptions</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {spendingPatterns.averageServiceLifeMonths.toFixed(1)}{" "}
+                        months
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        How long you keep subscriptions
+                      </p>
                     </div>
-                    
+
                     <div>
                       <h4 className="font-medium mb-2">Cancellation Rate</h4>
-                      <p className="text-2xl font-bold text-orange-600">{spendingPatterns.cancellationRate.toFixed(1)}%</p>
-                      <p className="text-sm text-gray-600">Services canceled within 3 months</p>
+                      <p className="text-2xl font-bold text-orange-600">
+                        {spendingPatterns.cancellationRate.toFixed(1)}%
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Services canceled within 3 months
+                      </p>
                     </div>
-                    
+
                     <div>
                       <h4 className="font-medium mb-2">Peak Spending Month</h4>
-                      <p className="text-2xl font-bold text-purple-600">{spendingPatterns.peakSpendingMonth}</p>
-                      <p className="text-sm text-gray-600">When you spend the most</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {spendingPatterns.peakSpendingMonth}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        When you spend the most
+                      </p>
                     </div>
                   </div>
                 ) : (
