@@ -1,193 +1,392 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useId, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { RegisterRequest } from '../types';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { AuthLayout } from '../components/auth';
+import AuthHeader from '../components/auth/AuthHeader';
+import FormError from '../components/auth/FormError';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '../components/ui/form';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import { LoadingSpinner } from '../components/ui/loading-spinner';
+import {
+  Card,
+  CardHeader,
+  CardContent,
+} from '../components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import { useFocusManagement, useFocusTrap } from '../hooks/useFocusManagement';
+import { handleAuthError } from '../utils/auth-utils';
+import { useAuthRedirect } from '../hooks/useAuthRedirect';
+
+// Define available currencies
+const CURRENCIES = [
+  { value: 'USD', label: 'USD - US Dollar' },
+  { value: 'EUR', label: 'EUR - Euro' },
+  { value: 'GBP', label: 'GBP - British Pound' },
+  { value: 'CAD', label: 'CAD - Canadian Dollar' },
+  { value: 'AUD', label: 'AUD - Australian Dollar' },
+  { value: 'JPY', label: 'JPY - Japanese Yen' },
+  { value: 'CNY', label: 'CNY - Chinese Yuan' },
+  { value: 'INR', label: 'INR - Indian Rupee' },
+  { value: 'BRL', label: 'BRL - Brazilian Real' },
+  { value: 'MXN', label: 'MXN - Mexican Peso' },
+  { value: 'SGD', label: 'SGD - Singapore Dollar' },
+  { value: 'NZD', label: 'NZD - New Zealand Dollar' },
+  { value: 'CHF', label: 'CHF - Swiss Franc' },
+  { value: 'ZAR', label: 'ZAR - South African Rand' },
+];
+
+// Define the registration form schema using Zod
+const registerFormSchema = z.object({
+  firstName: z
+    .string()
+    .min(1, { message: 'First name is required' }),
+  lastName: z
+    .string()
+    .min(1, { message: 'Last name is required' }),
+  email: z
+    .string()
+    .min(1, { message: 'Email is required' })
+    .email({ message: 'Please enter a valid email address' }),
+  password: z
+    .string()
+    .min(8, { message: 'Password must be at least 8 characters' })
+    .regex(/[A-Z]/, { message: 'Password must contain at least one uppercase letter' })
+    .regex(/[a-z]/, { message: 'Password must contain at least one lowercase letter' })
+    .regex(/[0-9]/, { message: 'Password must contain at least one number' }),
+  confirmPassword: z
+    .string()
+    .min(1, { message: 'Please confirm your password' }),
+  currency: z
+    .string()
+    .min(1, { message: 'Currency is required' }),
+})
+// Add password matching validation
+.refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+// Type for the form values derived from the schema
+type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
 const RegisterPage: React.FC = () => {
-  const { register, loading } = useAuth();
-  const [formData, setFormData] = useState<RegisterRequest>({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: '',
-    currency: 'USD',
+  const { register: registerUser, loading } = useAuth();
+  const [authError, setAuthError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  
+  // Redirect authenticated users away from registration page
+  useAuthRedirect({ redirectAuthenticated: true });
+  
+  // Generate unique IDs for form elements
+  const formId = useId();
+  const firstNameErrorId = `${formId}-firstName-error`;
+  const lastNameErrorId = `${formId}-lastName-error`;
+  const emailErrorId = `${formId}-email-error`;
+  const passwordErrorId = `${formId}-password-error`;
+  const confirmPasswordErrorId = `${formId}-confirmPassword-error`;
+  const currencyErrorId = `${formId}-currency-error`;
+  const authErrorId = `${formId}-auth-error`;
+  
+  // Initialize React Hook Form with Zod validation
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerFormSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      currency: 'USD',
+    },
   });
-  const [error, setError] = useState<string>('');
+  
+  // Focus management
+  const authErrorRef = useRef<HTMLDivElement>(null);
+  const formRef = useFocusTrap<HTMLFormElement>(true);
+  
+  // Set initial focus on first name input
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  const firstNameInputRef = useFocusManagement<HTMLInputElement>(true, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
+  // Handle form submission
+  const onSubmit = async (values: RegisterFormValues) => {
+    setAuthError(null);
+    
     try {
-      await register(formData);
+      // Convert form values to RegisterRequest type
+      const registerData: RegisterRequest = {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        password: values.password,
+        confirmPassword: values.confirmPassword,
+        currency: values.currency,
+      };
+      
+      await registerUser(registerData);
+      
+      // On successful registration, navigate to the dashboard
+      navigate('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      // Use our utility function to handle authentication errors
+      handleAuthError(err, setAuthError, authErrorRef as React.RefObject<HTMLElement>);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="flex justify-center">
-            <div className="w-12 h-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">R</span>
-            </div>
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link
-              to="/login"
-              className="font-medium text-primary-600 hover:text-primary-500"
-            >
-              sign in to your existing account
-            </Link>
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-danger-50 border border-danger-200 text-danger-600 px-4 py-3 rounded-lg">
-              {error}
+    <AuthLayout>
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="p-2 pt-4">
+          <AuthHeader 
+            title="Create your account"
+            subtitle="Or"
+            linkText="sign in to your existing account"
+            linkUrl="/login"
+          />
+        </CardHeader>
+        
+        <CardContent>
+          {authError && (
+            <div ref={authErrorRef} tabIndex={-1}>
+              <FormError 
+                id={authErrorId} 
+                message={authError} 
+                className="mb-6" 
+              />
             </div>
           )}
           
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="firstName" className="form-label">
-                  First Name
-                </label>
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  required
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className="form-input"
-                />
-              </div>
-              <div>
-                <label htmlFor="lastName" className="form-label">
-                  Last Name
-                </label>
-                <input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  required
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="form-input"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="form-label">
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your email"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="form-label">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Create a password"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="form-label">
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Confirm your password"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="currency" className="form-label">
-                Currency
-              </label>
-              <select
-                id="currency"
-                name="currency"
-                value={formData.currency}
-                onChange={handleChange}
-                className="form-input"
-              >
-                <option value="USD">USD - US Dollar</option>
-                <option value="EUR">EUR - Euro</option>
-                <option value="GBP">GBP - British Pound</option>
-                <option value="CAD">CAD - Canadian Dollar</option>
-                <option value="AUD">AUD - Australian Dollar</option>
-                <option value="JPY">JPY - Japanese Yen</option>
-                <option value="INR">INR - Indian Rupee</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full flex justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          <Form {...form}>
+            <form 
+              ref={formRef}
+              onSubmit={form.handleSubmit(onSubmit)} 
+              className="space-y-4"
+              aria-label="Registration form"
+              noValidate
             >
-              {loading ? (
-                <div className="loading-spinner w-4 h-4"></div>
-              ) : (
-                'Create Account'
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+              {/* Responsive grid for name fields - stack on mobile, side by side on larger screens */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="firstName"
+                  render={({ field, fieldState }) => (
+                    <FormItem>
+                      <FormLabel htmlFor={`${formId}-firstName`}>First Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          ref={firstNameInputRef}
+                          id={`${formId}-firstName`}
+                          placeholder="First name" 
+                          className="sm:text-sm"
+                          autoComplete="given-name"
+                          aria-required="true"
+                          aria-invalid={!!fieldState.error}
+                          aria-describedby={fieldState.error ? firstNameErrorId : undefined}
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage id={firstNameErrorId} />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field, fieldState }) => (
+                    <FormItem>
+                      <FormLabel htmlFor={`${formId}-lastName`}>Last Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          id={`${formId}-lastName`}
+                          placeholder="Last name" 
+                          className="sm:text-sm"
+                          autoComplete="family-name"
+                          aria-required="true"
+                          aria-invalid={!!fieldState.error}
+                          aria-describedby={fieldState.error ? lastNameErrorId : undefined}
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage id={lastNameErrorId} />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel htmlFor={`${formId}-email`}>Email address</FormLabel>
+                    <FormControl>
+                      <Input 
+                        id={`${formId}-email`}
+                        placeholder="Enter your email" 
+                        type="email"
+                        autoComplete="email"
+                        className="sm:text-sm"
+                        aria-required="true"
+                        aria-invalid={!!fieldState.error}
+                        aria-describedby={fieldState.error ? emailErrorId : undefined}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage id={emailErrorId} />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel htmlFor={`${formId}-password`}>Password</FormLabel>
+                    <FormControl>
+                      <Input 
+                        id={`${formId}-password`}
+                        placeholder="Create a password" 
+                        type="password"
+                        autoComplete="new-password"
+                        className="sm:text-sm"
+                        aria-required="true"
+                        aria-invalid={!!fieldState.error}
+                        aria-describedby={fieldState.error ? passwordErrorId : undefined}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage id={passwordErrorId} />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel htmlFor={`${formId}-confirmPassword`}>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input 
+                        id={`${formId}-confirmPassword`}
+                        placeholder="Confirm your password" 
+                        type="password"
+                        autoComplete="new-password"
+                        className="sm:text-sm"
+                        aria-required="true"
+                        aria-invalid={!!fieldState.error}
+                        aria-describedby={fieldState.error ? confirmPasswordErrorId : undefined}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage id={confirmPasswordErrorId} />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field, fieldState }) => {
+                  const currencyId = `${formId}-currency`;
+                  const currencyDescriptionId = `${currencyId}-description`;
+                  return (
+                    <FormItem>
+                      <FormLabel htmlFor={currencyId}>Currency</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger 
+                            id={currencyId}
+                            className="sm:text-sm"
+                            aria-required="true"
+                            aria-invalid={!!fieldState.error}
+                            aria-describedby={`${fieldState.error ? currencyErrorId : ''} ${currencyDescriptionId}`}
+                          >
+                            <SelectValue placeholder="Select currency" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {CURRENCIES.map((currency) => (
+                            <SelectItem 
+                              key={currency.value} 
+                              value={currency.value}
+                            >
+                              {currency.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage id={currencyErrorId} />
+                      <p 
+                        id={currencyDescriptionId}
+                        className="text-xs text-muted-foreground mt-1"
+                      >
+                        This will be your default currency for all subscriptions
+                      </p>
+                    </FormItem>
+                  );
+                }}
+              />
+              
+              <Button 
+                type="submit" 
+                className="w-full mt-6" 
+                disabled={loading}
+                aria-label="Create account"
+                aria-busy={loading}
+              >
+                {loading ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" aria-hidden="true" />
+                    Creating account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
+              </Button>
+              
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600">
+                  Already have an account?{' '}
+                  <Link 
+                    to="/login" 
+                    className="font-medium text-primary-600 hover:text-primary-500 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-sm"
+                    aria-label="Sign in to your existing account"
+                  >
+                    Sign in
+                  </Link>
+                </p>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </AuthLayout>
   );
 };
 
-export default RegisterPage; 
+export { RegisterPage };
+export default RegisterPage;
