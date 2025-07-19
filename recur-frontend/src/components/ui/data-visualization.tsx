@@ -121,7 +121,7 @@ export function TrendIndicator({
   const getColor = () => {
     if (isPositive) return "text-green-600"
     if (isNegative) return "text-red-600"
-    return "text-gray-500"
+          return "text-gray-500 dark:text-gray-400"
   }
 
   return (
@@ -189,7 +189,7 @@ export function Gauge({
       </svg>
       {showValue && (
         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2">
-          <span className="text-lg font-bold text-gray-900">{normalizedValue}</span>
+                        <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{normalizedValue}</span>
           <span className="text-sm text-gray-500 ml-1">/ {max}</span>
         </div>
       )}

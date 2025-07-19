@@ -188,10 +188,10 @@ export function FormBuilder({ fields, onFieldsChange, className }: FormBuilderPr
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <GripVertical className="h-4 w-4 text-gray-400" />
+                            <GripVertical className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                             <div>
                               <p className="font-medium">{field.label}</p>
-                              <p className="text-sm text-gray-500 capitalize">{field.type}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{field.type}</p>
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -233,7 +233,7 @@ export function FormBuilder({ fields, onFieldsChange, className }: FormBuilderPr
                     </Card>
                   ))}
                   {fields.length === 0 && (
-                    <div className="text-center py-12 text-gray-500">
+                    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                       <p>No fields added yet. Click "Add Field" to get started.</p>
                     </div>
                   )}
@@ -374,7 +374,7 @@ export function FormBuilder({ fields, onFieldsChange, className }: FormBuilderPr
               )}
             </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <p>Select a field to edit its properties</p>
             </div>
           )}

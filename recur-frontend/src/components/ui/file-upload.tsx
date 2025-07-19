@@ -107,9 +107,9 @@ export function FileUpload({
           disabled={disabled}
         />
 
-        <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <p className="text-lg font-bold text-gray-700 mb-2">Drop files here or click to upload</p>
-        <p className="text-sm text-gray-500 mb-4">
+                  <Upload className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
+          <p className="text-lg font-bold text-gray-700 dark:text-gray-300 mb-2">Drop files here or click to upload</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           {accept ? `Accepted formats: ${accept}` : "Any file format"}
           {maxSize && ` • Max size: ${maxSize / 1024 / 1024}MB`}
         </p>
@@ -121,18 +121,18 @@ export function FileUpload({
 
       {files.length > 0 && (
         <div className="mt-4 space-y-2">
-          <h4 className="font-bold text-sm text-gray-700">Uploaded Files:</h4>
+          <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300">Uploaded Files:</h4>
           {files.map((file, index) => (
             <div
               key={index}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-md border-2 border-gray-200"
+              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md border-2 border-gray-200 dark:border-gray-600"
             >
               <div className="flex items-center space-x-3">
-                <File className="h-5 w-5 text-gray-500" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                  <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
-                </div>
+                                  <File className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{file.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{formatFileSize(file.size)}</p>
+                  </div>
               </div>
               <Button
                 variant="ghost"

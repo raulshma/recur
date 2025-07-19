@@ -73,7 +73,7 @@ export function FeatureFlagToggle({ flag, onToggle, onEdit, className }: Feature
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center space-x-2">
-              <Percent className="h-4 w-4 text-gray-500" />
+                              <Percent className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               <span className="font-medium">Rollout Progress</span>
             </div>
             <span className="font-bold">{flag.rolloutPercentage}%</span>
@@ -84,7 +84,7 @@ export function FeatureFlagToggle({ flag, onToggle, onEdit, className }: Feature
         {/* User Stats */}
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center space-x-2">
-            <Users className="h-4 w-4 text-gray-500" />
+                            <Users className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             <span className="font-medium">Users Affected</span>
           </div>
           <span className="font-bold">
@@ -95,14 +95,14 @@ export function FeatureFlagToggle({ flag, onToggle, onEdit, className }: Feature
         {/* Dates */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <div className="flex items-center space-x-2 text-gray-500 mb-1">
+            <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400 mb-1">
               <Calendar className="h-3 w-3" />
               <span>Created</span>
             </div>
             <span className="font-medium">{formatDate(flag.createdAt)}</span>
           </div>
           <div>
-            <div className="flex items-center space-x-2 text-gray-500 mb-1">
+            <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400 mb-1">
               <Calendar className="h-3 w-3" />
               <span>Modified</span>
             </div>

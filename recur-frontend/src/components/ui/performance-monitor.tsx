@@ -83,7 +83,7 @@ export function PerformanceMonitor({ componentName = "Component", showInProducti
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-80">
-      <Card className="bg-white/95 backdrop-blur-sm border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <Card className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-bold flex items-center">
@@ -133,14 +133,14 @@ export function PerformanceMonitor({ componentName = "Component", showInProducti
 
           {/* Component Stats */}
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+            <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
               <div className="flex items-center">
                 <Cpu className="h-3 w-3 mr-1" />
                 <span>Components</span>
               </div>
               <span className="font-mono">{metrics.componentCount}</span>
             </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+            <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
               <div className="flex items-center">
                 <Zap className="h-3 w-3 mr-1" />
                 <span>Re-renders</span>

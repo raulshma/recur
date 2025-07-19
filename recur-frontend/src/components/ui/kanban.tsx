@@ -119,7 +119,7 @@ export function KanbanBoard({ columns, onTaskMove, onTaskAdd, className }: Kanba
                     >
                       <CardContent className="p-4">
                         <h4 className="font-bold text-sm mb-2">{task.title}</h4>
-                        {task.description && <p className="text-xs text-gray-600 mb-3">{task.description}</p>}
+                        {task.description && <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">{task.description}</p>}
                         <div className="flex items-center justify-between">
                           <Badge variant={getPriorityColor(task.priority)} className="text-xs">
                             {task.priority}

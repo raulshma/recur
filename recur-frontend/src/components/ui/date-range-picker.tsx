@@ -40,7 +40,7 @@ export function DateRangePicker({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={cn("w-full justify-start text-left font-normal bg-white", !date && "text-gray-500", className)}
+          className={cn("w-full justify-start text-left font-normal bg-white dark:bg-gray-800", !date && "text-gray-500 dark:text-gray-400", className)}
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
