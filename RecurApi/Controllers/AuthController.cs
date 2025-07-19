@@ -44,6 +44,28 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponseDto>> Register(RegisterDto model)
     {
+        // Validate the invite token
+        var invite = await _context.Invites
+            .FirstOrDefaultAsync(i => i.Token == model.InviteToken && !i.IsUsed && i.ExpiresAt > DateTime.UtcNow);
+
+        if (invite == null)
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "Invalid or expired invitation token"
+            });
+        }
+
+        if (invite.Email != model.Email)
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "Email address does not match the invitation"
+            });
+        }
+
         if (await _userManager.FindByEmailAsync(model.Email) != null)
         {
             return BadRequest(new AuthResponseDto
@@ -67,6 +89,17 @@ public class AuthController : ControllerBase
 
         if (result.Succeeded)
         {
+            // Assign role from invite
+            if (!string.IsNullOrEmpty(invite.Role))
+            {
+                await _userManager.AddToRoleAsync(user, invite.Role);
+            }
+
+            // Mark invite as used
+            invite.IsUsed = true;
+            invite.UsedAt = DateTime.UtcNow;
+            invite.AcceptedByUserId = user.Id;
+            
             // Create default user settings
             var settings = new UserSettings
             {
@@ -85,7 +118,7 @@ public class AuthController : ControllerBase
                 Message = "Registration successful",
                 Token = token.Token,
                 Expires = token.Expires,
-                User = MapToUserDto(user)
+                User = await MapToUserDto(user)
             });
         }
 
@@ -124,7 +157,7 @@ public class AuthController : ControllerBase
                 Message = "Login successful",
                 Token = token.Token,
                 Expires = token.Expires,
-                User = MapToUserDto(user)
+                User = await MapToUserDto(user)
             });
         }
 
@@ -176,7 +209,7 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        return Ok(MapToUserDto(user));
+        return Ok(await MapToUserDto(user));
     }
 
     private async Task<(string Token, DateTime Expires)> GenerateJwtToken(User user)
@@ -255,7 +288,7 @@ public class AuthController : ControllerBase
         {
             Success = true,
             Message = "Profile updated successfully",
-            User = MapToUserDto(user)
+            User = await MapToUserDto(user)
         });
     }
 
@@ -365,7 +398,7 @@ public class AuthController : ControllerBase
         {
             Success = true,
             Message = "Settings updated successfully",
-            User = MapToUserDto(user)
+            User = await MapToUserDto(user)
         });
     }
 
@@ -469,8 +502,10 @@ public class AuthController : ControllerBase
         return File(bytes, "application/json", $"recur-data-export-{DateTime.UtcNow:yyyy-MM-dd}.json");
     }
 
-    private static UserDto MapToUserDto(User user)
+    private async Task<UserDto> MapToUserDto(User user)
     {
+        var roles = await _userManager.GetRolesAsync(user);
+        
         return new UserDto
         {
             Id = user.Id,
@@ -481,7 +516,8 @@ public class AuthController : ControllerBase
             Currency = user.Currency,
             BudgetLimit = user.BudgetLimit,
             CreatedAt = user.CreatedAt,
-            LastLoginAt = user.LastLoginAt
+            LastLoginAt = user.LastLoginAt,
+            Roles = roles.ToList()
         };
     }
 

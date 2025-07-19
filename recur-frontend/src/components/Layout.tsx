@@ -16,6 +16,7 @@ import {
   MoonIcon,
   QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
+import { Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -88,6 +89,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       icon: ChartBarIcon,
       current: location.pathname === '/analytics',
     },
+    ...(user?.roles?.includes('Admin') ? [{
+      name: 'Admin',
+      href: '/admin',
+      icon: Crown,
+      current: location.pathname === '/admin',
+    }] : []),
     {
       name: 'Settings',
       href: '/settings',

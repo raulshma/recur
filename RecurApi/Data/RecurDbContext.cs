@@ -16,6 +16,7 @@ public class RecurDbContext : IdentityDbContext<User>
     public DbSet<UserSettings> UserSettings { get; set; }
     public DbSet<ExchangeRate> ExchangeRates { get; set; }
     public DbSet<SubscriptionHistory> SubscriptionHistory { get; set; }
+    public DbSet<Invite> Invites { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -163,6 +164,47 @@ public class RecurDbContext : IdentityDbContext<User>
             // Configure DateTime properties with database defaults
             entity.Property(sh => sh.Timestamp)
                   .HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        // Configure Invite entity
+        builder.Entity<Invite>(entity =>
+        {
+            entity.HasKey(i => i.Id);
+
+            entity.Property(i => i.Email)
+                  .IsRequired()
+                  .HasMaxLength(255);
+
+            entity.Property(i => i.Token)
+                  .IsRequired()
+                  .HasMaxLength(255);
+
+            entity.Property(i => i.Role)
+                  .HasMaxLength(50)
+                  .HasDefaultValue("User");
+
+            entity.Property(i => i.CreatedAt)
+                  .HasDefaultValueSql("GETUTCDATE()");
+
+            // Configure relationship with InvitedBy user
+            entity.HasOne(i => i.InvitedBy)
+                  .WithMany()
+                  .HasForeignKey(i => i.InvitedByUserId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            // Configure relationship with AcceptedBy user
+            entity.HasOne(i => i.AcceptedBy)
+                  .WithMany()
+                  .HasForeignKey(i => i.AcceptedByUserId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            // Create unique index for active invites
+            entity.HasIndex(i => new { i.Email, i.IsUsed })
+                  .HasDatabaseName("IX_Invite_Email_IsUsed");
+
+            entity.HasIndex(i => i.Token)
+                  .IsUnique()
+                  .HasDatabaseName("IX_Invite_Token");
         });
 
         // Seed default categories with static CreatedAt values

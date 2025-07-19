@@ -117,11 +117,71 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<RecurDbContext>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     
     // context.Database.ExecuteSqlRaw(@"
     //     DROP DATABASE RecurApiDb;
     // ");
     context.Database.Migrate();
+    
+    // Seed roles
+    await SeedRoles(roleManager);
+    
+    // Seed initial admin user
+    await SeedAdminUser(userManager, context);
+}
+
+// Helper methods for seeding
+async Task SeedRoles(RoleManager<IdentityRole> roleManager)
+{
+    string[] roles = { "Admin", "User" };
+    
+    foreach (string role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+}
+
+async Task SeedAdminUser(UserManager<User> userManager, RecurDbContext context)
+{
+    // Check if admin user already exists
+    var adminEmail = "admin@example.com";
+    if (await userManager.FindByEmailAsync(adminEmail) == null)
+    {
+        var adminUser = new User
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            FirstName = "System",
+            LastName = "Administrator",
+            Currency = "USD",
+            TimeZone = "UTC",
+            EmailConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(adminUser, "Admin@123");
+        
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+            
+            // Create admin user settings
+            var settings = new UserSettings
+            {
+                UserId = adminUser.Id,
+                DefaultCurrency = "USD",
+                TimeZone = "UTC"
+            };
+            context.UserSettings.Add(settings);
+            await context.SaveChangesAsync();
+            
+            Console.WriteLine($"Admin user created: {adminEmail} / Admin123!");
+        }
+    }
 }
 
 app.Run();
