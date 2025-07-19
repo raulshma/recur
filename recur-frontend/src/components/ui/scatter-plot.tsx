@@ -94,7 +94,7 @@ export const ScatterPlot = React.forwardRef<HTMLDivElement, ScatterPlotProps>(
       <div
         ref={ref}
         className={cn(
-          "w-full rounded-md border-2 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+          "w-full rounded-md border-2 border-black bg-white dark:bg-gray-800 p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
           className,
         )}
         {...props}

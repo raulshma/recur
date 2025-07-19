@@ -135,7 +135,7 @@ export function CommandPalette({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn("max-w-2xl p-0", className)}>
-        <div className="border-2 border-black rounded-lg bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+        <div className="border-2 border-black rounded-lg bg-white dark:bg-gray-800 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
           {/* Search Input */}
           <div className="flex items-center border-b-2 border-black p-4">
             <Search className="h-5 w-5 text-gray-500 mr-3" />

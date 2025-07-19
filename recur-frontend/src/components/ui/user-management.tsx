@@ -137,7 +137,7 @@ export function UserManagement({
           </Avatar>
           <div>
             <p className="font-medium">{user.name}</p>
-            <p className="text-sm text-gray-500">{user.email}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-500">{user.email}</p>
           </div>
         </div>
       ),
@@ -221,7 +221,7 @@ export function UserManagement({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">User Management</h2>
-              <p className="text-gray-600">Manage users, roles, and permissions</p>
+              <p className="text-gray-600 dark:text-gray-400">Manage users, roles, and permissions</p>
             </div>
             <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
               <DialogTrigger asChild>
@@ -280,7 +280,7 @@ export function UserManagement({
               <div className="flex flex-wrap gap-4">
                 <div className="flex-1 min-w-[200px]">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-500" />
                     <Input
                       placeholder="Search users..."
                       value={searchTerm}
@@ -338,7 +338,7 @@ export function UserManagement({
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-3">
-                          <Shield className="h-5 w-5 text-gray-500" />
+                          <Shield className="h-5 w-5 text-gray-500 dark:text-gray-500" />
                           <div>
                             <h4 className="font-medium">{role.name}</h4>
                             <p className="text-sm text-gray-500">{role.description}</p>

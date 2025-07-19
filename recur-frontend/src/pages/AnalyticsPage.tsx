@@ -417,7 +417,7 @@ const AnalyticsPage: React.FC = () => {
                           {subscription.originalCurrency &&
                             subscription.originalCurrency !==
                               displayCurrency && (
-                              <span className="text-sm text-gray-500 ml-1">
+                              <span className="text-sm text-gray-500 dark:text-gray-500 ml-1">
                                 (
                                 {formatCurrency(
                                   subscription.originalCost,
@@ -491,7 +491,7 @@ const AnalyticsPage: React.FC = () => {
                             />
                             <span className="font-medium">{category.name}</span>
                           </div>
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
                             {formatCurrency(category.value, displayCurrency)}
                           </span>
                         </div>
@@ -503,7 +503,7 @@ const AnalyticsPage: React.FC = () => {
                           }
                           className="h-2"
                         />
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
                           {(
                             (category.value /
                               categoryData.reduce(
@@ -557,7 +557,7 @@ const AnalyticsPage: React.FC = () => {
                                 {insight.type}
                               </Badge>
                             </div>
-                            <p className="text-sm text-gray-600 mb-3">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                               {insight.description}
                             </p>
                             <div className="flex items-center justify-between">

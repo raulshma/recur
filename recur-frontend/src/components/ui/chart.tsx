@@ -27,7 +27,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       <div
         ref={ref}
         className={cn(
-          "w-full rounded-md border-2 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+          "w-full rounded-md border-2 border-black bg-white dark:bg-gray-800 p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
           className,
         )}
         style={{ height }}
@@ -101,7 +101,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       <div
         ref={ref}
         className={cn(
-          "w-full rounded-md border-2 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+          "w-full rounded-md border-2 border-black bg-white dark:bg-gray-800 p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
           className,
         )}
         style={{ height }}
@@ -156,7 +156,7 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
       <div
         ref={ref}
         className={cn(
-          "flex items-center justify-center rounded-md border-2 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+          "flex items-center justify-center rounded-md border-2 border-black bg-white dark:bg-gray-800 p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
           className,
         )}
         style={{ width: size, height: size }}

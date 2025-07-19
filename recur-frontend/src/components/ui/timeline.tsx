@@ -56,7 +56,7 @@ export function Timeline({ items, className }: TimelineProps) {
               getStatusColor(item.status),
             )}
           >
-            {item.icon || <div className="h-2 w-2 rounded-full bg-white" />}
+            {item.icon || <div className="h-2 w-2 rounded-full bg-white dark:bg-gray-200" />}
           </div>
 
           {/* Content */}
