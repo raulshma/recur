@@ -636,15 +636,16 @@ const SubscriptionsPage: React.FC = () => {
                 Add Subscription
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
+              <DialogHeader className="flex-shrink-0">
                 <DialogTitle>Add New Subscription</DialogTitle>
                 <DialogDescription>
                   Add a new subscription to track your recurring payments.
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+                <div className="flex-1 overflow-y-auto">
+                  <form id="add-subscription-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
                   <div className="grid grid-cols-3 gap-4">
                     <FormField
                       control={form.control}
@@ -841,23 +842,25 @@ const SubscriptionsPage: React.FC = () => {
                       )}
                     />
                   </div>
-                  <DialogFooter>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setIsAddDialogOpen(false)}
-                      disabled={createSubscriptionMutation.isPending}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={createSubscriptionMutation.isPending}
-                    >
-                      {createSubscriptionMutation.isPending ? 'Adding...' : 'Add Subscription'}
-                    </Button>
-                  </DialogFooter>
-                </form>
+                  </form>
+                </div>
+                <DialogFooter className="flex-shrink-0">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsAddDialogOpen(false)}
+                    disabled={createSubscriptionMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    form="add-subscription-form"
+                    disabled={createSubscriptionMutation.isPending}
+                  >
+                    {createSubscriptionMutation.isPending ? 'Adding...' : 'Add Subscription'}
+                  </Button>
+                </DialogFooter>
               </Form>
             </DialogContent>
           </Dialog>
@@ -1191,8 +1194,8 @@ const SubscriptionsPage: React.FC = () => {
           setEditDialogOpen(open);
         }}
       >
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Edit Subscription</DialogTitle>
             <DialogDescription>
               Make changes to your subscription details.
@@ -1200,8 +1203,10 @@ const SubscriptionsPage: React.FC = () => {
           </DialogHeader>
 
           <Form {...editForm}>
-            <form
-              onSubmit={editForm.handleSubmit((data) => {
+            <div className="flex-1 overflow-y-auto">
+              <form
+                id="edit-subscription-form"
+                onSubmit={editForm.handleSubmit((data) => {
                 if (!subscriptionToEdit) return;
                 
                 const payload: UpdateSubscriptionRequest = {
@@ -1436,24 +1441,25 @@ const SubscriptionsPage: React.FC = () => {
                   )}
                 />
               </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditDialogOpen(false)}
-                  disabled={updateSubscriptionMutation.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={updateSubscriptionMutation.isPending}
-                >
-                  {updateSubscriptionMutation.isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </DialogFooter>
             </form>
+            </div>
+            <DialogFooter className="flex-shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+                disabled={updateSubscriptionMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                form="edit-subscription-form"
+                disabled={updateSubscriptionMutation.isPending}
+              >
+                {updateSubscriptionMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
           </Form>
         </DialogContent>
       </Dialog>
@@ -1514,17 +1520,19 @@ const SubscriptionsPage: React.FC = () => {
           setHistoryDialogOpen(open);
         }}
       >
-        <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Subscription History</DialogTitle>
             <DialogDescription>
               {subscriptionForHistory?.name} - Timeline of changes and events
             </DialogDescription>
           </DialogHeader>
 
-          <SubscriptionHistoryView subscriptionId={subscriptionForHistory?.id} />
+          <div className="flex-1 overflow-y-auto">
+            <SubscriptionHistoryView subscriptionId={subscriptionForHistory?.id} />
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0">
             <Button variant="outline" onClick={() => setHistoryDialogOpen(false)}>
               Close
             </Button>
