@@ -82,10 +82,15 @@ public class CurrencyConversionService : ICurrencyConversionService
         try
         {
             var exchangeRate = await GetExchangeRateAsync(fromCurrency, toCurrency);
+            var convertedAmount = amount * exchangeRate.Rate;
+            
+            // Debug logging for currency conversion
+            _logger.LogInformation("Currency Conversion Debug: {Amount} {FromCurrency} * {Rate} = {ConvertedAmount} {ToCurrency}", 
+                amount, fromCurrency, exchangeRate.Rate, convertedAmount, toCurrency);
             
             return new CurrencyConversionResult
             {
-                ConvertedAmount = amount * exchangeRate.Rate,
+                ConvertedAmount = convertedAmount,
                 ExchangeRate = exchangeRate.Rate,
                 RateTimestamp = exchangeRate.Timestamp,
                 IsStale = DateTime.UtcNow.Subtract(exchangeRate.Timestamp).TotalHours > DatabaseCacheExpirationHours,
@@ -803,8 +808,13 @@ public class CurrencyConversionService : ICurrencyConversionService
         
         if (!apiResponse.Success || !apiResponse.Rates.TryGetValue(toCurrency, out var rate))
         {
+            _logger.LogError("Failed to get exchange rate from API: {FromCurrency} to {ToCurrency}. API Success: {Success}", 
+                fromCurrency, toCurrency, apiResponse.Success);
             throw new InvalidOperationException($"Unable to get exchange rate from {fromCurrency} to {toCurrency}");
         }
+
+        _logger.LogInformation("Fetched exchange rate from API: {FromCurrency} to {ToCurrency} = {Rate}", 
+            fromCurrency, toCurrency, rate);
 
         var exchangeRate = new ExchangeRate
         {

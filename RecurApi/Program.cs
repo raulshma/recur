@@ -110,6 +110,11 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<RecurDbContext>();
+    
+    // context.Database.ExecuteSqlRaw(@"
+    //     DROP DATABASE RecurApiDb;
+    // ");
+    
     context.Database.Migrate();
 }
 

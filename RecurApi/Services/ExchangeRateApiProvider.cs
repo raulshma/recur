@@ -72,6 +72,16 @@ public class ExchangeRateApiProvider : IExchangeRateProvider
             _logger.LogInformation("Successfully fetched exchange rates for {BaseCurrency}. Found {Count} currencies.",
                 baseCurrency, apiResponse.ConversionRates.Count);
 
+            // Debug logging for common currency pairs
+            if (apiResponse.ConversionRates.ContainsKey("INR"))
+            {
+                _logger.LogInformation("Exchange Rate Debug: {BaseCurrency} to INR = {Rate}", baseCurrency, apiResponse.ConversionRates["INR"]);
+            }
+            if (apiResponse.ConversionRates.ContainsKey("USD"))
+            {
+                _logger.LogInformation("Exchange Rate Debug: {BaseCurrency} to USD = {Rate}", baseCurrency, apiResponse.ConversionRates["USD"]);
+            }
+
             return new ExchangeRateResponse
             {
                 BaseCurrency = baseCurrency,
