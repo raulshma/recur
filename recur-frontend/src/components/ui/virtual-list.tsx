@@ -39,7 +39,7 @@ export function VirtualList<T>({
     <div
       ref={scrollElementRef}
       className={cn(
-        "overflow-auto border-2 border-black rounded-lg bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+        "overflow-auto border-2 border-black rounded-lg bg-white dark:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
         className,
       )}
       style={{ height: containerHeight }}

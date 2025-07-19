@@ -124,7 +124,7 @@ const DashboardPage: React.FC = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading dashboard...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading dashboard...</p>
           </div>
         </div>
       </div>
@@ -299,8 +299,8 @@ const DashboardPage: React.FC = () => {
                           style={{ backgroundColor: activity.categoryColor }}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{activity.title}</p>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                  <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{activity.title}</p>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                             <CurrencyDisplay
                               amount={activity.cost}
                               currency={activity.currency}
@@ -317,7 +317,7 @@ const DashboardPage: React.FC = () => {
                             <span>{activity.billingCycle}</span>
                           </div>
                         </div>
-                        <div className="text-xs text-gray-500 flex-shrink-0">
+                        <div className="text-xs text-gray-500 dark:text-gray-500 flex-shrink-0">
                           {new Date(activity.timestamp).toLocaleDateString()}
                         </div>
                       </div>
@@ -529,10 +529,10 @@ const DashboardPage: React.FC = () => {
               {/* Budget Comparison */}
               {user?.budgetLimit && user.budgetLimit > 0 && dashboardStats && (
                 <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                  <h4 className="font-medium text-gray-900 mb-2">Monthly Budget</h4>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Monthly Budget</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Spent</span>
+                                              <span className="text-sm text-gray-600 dark:text-gray-400">Spent</span>
                       <CurrencyDisplay
                         amount={dashboardStats.totalMonthlyCost}
                         currency={dashboardStats.displayCurrency || userCurrency}
@@ -541,7 +541,7 @@ const DashboardPage: React.FC = () => {
                       />
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Budget</span>
+                                              <span className="text-sm text-gray-600 dark:text-gray-400">Budget</span>
                       <span className="text-sm font-medium">
                         {formatCurrency(user.budgetLimit, userCurrency)}
                       </span>
@@ -560,7 +560,7 @@ const DashboardPage: React.FC = () => {
                         }}
                       />
                     </div>
-                    <div className="flex justify-between items-center text-xs text-gray-500">
+                    <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-500">
                       <span>
                         {((dashboardStats.totalMonthlyCost / user.budgetLimit) * 100).toFixed(1)}% used
                       </span>
@@ -577,13 +577,13 @@ const DashboardPage: React.FC = () => {
 
               {/* General Insights */}
               <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
-                <h4 className="font-medium text-gray-900 mb-2">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
                   {dashboardStats?.activeSubscriptions === 0 
                     ? "Start tracking your subscriptions"
                     : "Your subscription overview"
                   }
                 </h4>
-                <p className="text-sm text-gray-600 mb-3">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                   {dashboardStats?.activeSubscriptions === 0 
                     ? "Add your first subscription to start getting insights about your spending patterns."
                     : (

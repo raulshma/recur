@@ -110,7 +110,7 @@ export function TreeView({ data, onSelect, selectedId, className, defaultExpande
 
   return (
     <div
-      className={cn("border-2 border-black rounded-lg bg-white p-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]", className)}
+      className={cn("border-2 border-black rounded-lg bg-white dark:bg-gray-800 p-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]", className)}
     >
       {data.map((node) => (
         <TreeNodeComponent
