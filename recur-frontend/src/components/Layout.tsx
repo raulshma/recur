@@ -124,7 +124,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200">
+      <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200 flex-shrink-0">
         <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
           <RectangleStackIcon className="h-5 w-5 text-white" />
         </div>
@@ -132,7 +132,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* Search */}
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
         <div className="relative">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input
@@ -151,7 +151,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-6 py-4 space-y-2">
+      <nav className="flex-1 px-6 py-4 space-y-2 overflow-y-auto min-h-0">
         {navigation.map((item) => {
           const Icon = item.icon;
           return (
@@ -178,7 +178,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </nav>
 
       {/* Quick Stats */}
-      <div className="px-6 py-4 border-t border-gray-200">
+      <div className="px-6 py-4 border-t border-gray-200 flex-shrink-0">
         <Card className="p-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -210,7 +210,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* User Profile */}
-      <div className="px-6 py-4 border-t border-gray-200">
+      <div className="px-6 py-4 border-t border-gray-200 flex-shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start p-2 h-auto">
