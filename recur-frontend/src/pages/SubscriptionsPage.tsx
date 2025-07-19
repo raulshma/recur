@@ -48,6 +48,8 @@ import type { Subscription, CreateSubscriptionRequest, BillingCycle } from '../t
 import { SUPPORTED_CURRENCIES } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 const SubscriptionsPage: React.FC = () => {
   const { user } = useAuth();
@@ -57,7 +59,10 @@ const SubscriptionsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [subscriptionToDelete, setSubscriptionToDelete] = useState<Subscription | null>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch subscriptions from API
   const { data: subscriptions = [] } = useQuery({
@@ -78,9 +83,19 @@ const SubscriptionsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
       setIsAddDialogOpen(false);
       form.reset();
+      toast({
+        title: "Success",
+        description: "Subscription created successfully!",
+        variant: "success",
+      });
     },
     onError: (error) => {
       console.error('Error creating subscription:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create subscription. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -89,9 +104,21 @@ const SubscriptionsPage: React.FC = () => {
     mutationFn: (id: number) => subscriptionsApi.deleteSubscription(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      setDeleteConfirmOpen(false);
+      setSubscriptionToDelete(null);
+      toast({
+        title: "Success",
+        description: "Subscription deleted successfully!",
+        variant: "success",
+      });
     },
     onError: (error) => {
       console.error('Error deleting subscription:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete subscription. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -253,9 +280,8 @@ const SubscriptionsPage: React.FC = () => {
             <DropdownMenuItem 
               className="text-red-600"
               onClick={() => {
-                if (confirm('Are you sure you want to delete this subscription?')) {
-                  deleteSubscriptionMutation.mutate(value);
-                }
+                setSubscriptionToDelete(value);
+                setDeleteConfirmOpen(true);
               }}
             >
               <TrashIcon className="h-4 w-4 mr-2" />
@@ -650,6 +676,22 @@ const SubscriptionsPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Subscription"
+        description={`Are you sure you want to delete "${subscriptionToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={() => {
+          if (subscriptionToDelete) {
+            deleteSubscriptionMutation.mutate(subscriptionToDelete.id);
+          }
+        }}
+      />
     </div>
   );
 };

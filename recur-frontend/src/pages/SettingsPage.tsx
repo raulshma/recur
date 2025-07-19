@@ -48,11 +48,13 @@ import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import { settingsApi, type UserSettings, type UpdateProfileRequest, type UpdateUserSettingsRequest } from '../api/settings';
 import { validateDiscordWebhookUrl } from '../utils/discord-webhook-validator';
+import { useToast } from '@/hooks/use-toast';
 import { SUPPORTED_CURRENCIES } from '@/lib/utils';
 import { CurrencySettings } from '@/components/currency-settings';
 
 const SettingsPage: React.FC = () => {
   const { user, updateUser } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile');
   const [showPassword, setShowPassword] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -178,17 +180,22 @@ const SettingsPage: React.FC = () => {
   const onProfileSubmit = async (data: UpdateProfileRequest) => {
     try {
       setLoading(true);
-      console.log('Submitting profile update with data:', data);
       const response = await settingsApi.updateProfile(data);
-      console.log('Profile update response:', response);
       if (response.success && response.user) {
-        console.log('Updating user context with:', response.user);
         updateUser(response.user);
-        // Show success message
-        console.log('Profile updated successfully');
+        toast({
+          title: "Success",
+          description: "Profile updated successfully!",
+          variant: "success",
+        });
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -204,10 +211,19 @@ const SettingsPage: React.FC = () => {
       });
       if (response.success) {
         securityForm.reset();
-        console.log('Password changed successfully');
+        toast({
+          title: "Success",
+          description: "Password changed successfully!",
+          variant: "success",
+        });
       }
     } catch (error) {
       console.error('Failed to change password:', error);
+      toast({
+        title: "Error",
+        description: "Failed to change password. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -261,8 +277,11 @@ const SettingsPage: React.FC = () => {
       // Revert the change on error
       setUserSettings(userSettings);
       
-      // Show error message (you could add a toast notification here)
-      console.error(`Failed to update ${key}. Please try again.`);
+      toast({
+        title: "Error",
+        description: `Failed to update ${key}. Please try again.`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -275,13 +294,21 @@ const SettingsPage: React.FC = () => {
       // Validate webhook URL if Discord notifications are enabled
       if (userSettings.discordNotifications) {
         if (!userSettings.discordWebhookUrl) {
-          alert('Please enter a Discord webhook URL');
+          toast({
+            title: "Validation Error",
+            description: "Please enter a Discord webhook URL",
+            variant: "destructive",
+          });
           return;
         }
         
         const validation = validateDiscordWebhookUrl(userSettings.discordWebhookUrl);
         if (!validation.isValid) {
-          alert(`Invalid webhook URL: ${validation.error}`);
+          toast({
+            title: "Invalid Webhook URL",
+            description: validation.error,
+            variant: "destructive",
+          });
           return;
         }
       }
@@ -290,12 +317,19 @@ const SettingsPage: React.FC = () => {
       const response = await settingsApi.updateUserSettings(userSettings);
       console.log('Discord settings saved:', response);
       
-      // Show success message
-      alert('Discord notification settings saved successfully!');
+      toast({
+        title: "Success",
+        description: "Discord notification settings saved successfully!",
+        variant: "success",
+      });
       setHasUnsavedDiscordChanges(false);
     } catch (error) {
       console.error('Failed to save Discord settings:', error);
-      alert('Failed to save Discord settings. Please try again.');
+      toast({
+        title: "Error",
+        description: "Failed to save Discord settings. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -306,12 +340,22 @@ const SettingsPage: React.FC = () => {
       setLoading(true);
       const response = await settingsApi.deleteAccount();
       if (response.success) {
+        toast({
+          title: "Account Deleted",
+          description: "Your account has been successfully deleted.",
+          variant: "success",
+        });
         // Logout and redirect
         authApi.logout();
         window.location.href = '/login';
       }
     } catch (error) {
       console.error('Failed to delete account:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete account. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
       setIsDeleteDialogOpen(false);
@@ -329,8 +373,18 @@ const SettingsPage: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      toast({
+        title: "Success",
+        description: "Data exported successfully!",
+        variant: "success",
+      });
     } catch (error) {
       console.error('Failed to export data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to export data. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -655,9 +709,17 @@ const SettingsPage: React.FC = () => {
                               onClick={async () => {
                                 try {
                                   await settingsApi.testDiscordNotification(userSettings.discordWebhookUrl!);
-                                  alert('Test notification sent successfully!');
+                                  toast({
+                                    title: "Success",
+                                    description: "Test notification sent successfully!",
+                                    variant: "success",
+                                  });
                                 } catch (error) {
-                                  alert('Failed to send test notification. Please check your webhook URL.');
+                                  toast({
+                                    title: "Error",
+                                    description: "Failed to send test notification. Please check your webhook URL.",
+                                    variant: "destructive",
+                                  });
                                 }
                               }}
                             >

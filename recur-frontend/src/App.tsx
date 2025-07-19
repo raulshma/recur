@@ -9,6 +9,7 @@ import SubscriptionsPage from './pages/SubscriptionsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import Layout from './components/Layout';
+import { Toaster } from './components/ui/toaster';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -131,6 +132,7 @@ function App() {
         <Router>
           <div className="min-h-screen bg-gray-50 antialiased">
             <AppRoutes />
+            <Toaster />
           </div>
         </Router>
       </AuthProvider>
