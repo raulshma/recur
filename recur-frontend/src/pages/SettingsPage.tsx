@@ -51,10 +51,12 @@ import { validateDiscordWebhookUrl } from '../utils/discord-webhook-validator';
 import { useToast } from '@/hooks/use-toast';
 import { SUPPORTED_CURRENCIES } from '@/lib/utils';
 import { CurrencySettings } from '@/components/currency-settings';
+import { useTheme } from '@/components/theme-provider';
 
 const SettingsPage: React.FC = () => {
   const { user, updateUser } = useAuth();
   const { toast } = useToast();
+  const { setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('profile');
   const [showPassword, setShowPassword] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -255,6 +257,12 @@ const SettingsPage: React.FC = () => {
       if (key === 'defaultCurrency' && response.user) {
         console.log('Currency changed, updating user context with:', response.user);
         updateUser(response.user);
+      }
+      
+      // If theme was changed, update the theme provider
+      if (key === 'theme' && typeof value === 'string') {
+        console.log('Theme changed, updating theme provider to:', value);
+        setTheme(value as 'light' | 'dark');
       }
       
       // If this is a currency-related setting, we might need to refresh some data
@@ -838,7 +846,7 @@ const SettingsPage: React.FC = () => {
 
                   <Separator />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">
                       <Label>Default Currency</Label>
                       <Select
@@ -852,6 +860,25 @@ const SettingsPage: React.FC = () => {
                           {SUPPORTED_CURRENCIES.map((currency) => (
                             <SelectItem key={currency.value} value={currency.value}>
                               {currency.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Theme</Label>
+                      <Select
+                        value={userSettings.theme}
+                        onValueChange={(value) => handleNotificationChange('theme', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {themes.map((theme) => (
+                            <SelectItem key={theme.value} value={theme.value}>
+                              {theme.label}
                             </SelectItem>
                           ))}
                         </SelectContent>

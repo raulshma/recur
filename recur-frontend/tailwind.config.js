@@ -319,7 +319,7 @@ const config = {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: ["selector", '[theme="dark"]'],
+  darkMode: ["class"],
   important: true,
   theme: {
     colors: {

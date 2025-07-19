@@ -58,3 +58,25 @@ export const useTheme = () => {
 
   return context
 }
+
+// Wrapper component that syncs theme with user settings
+export function ThemeWrapper({ children }: { children: React.ReactNode }) {
+  const { theme, setTheme } = useTheme();
+  
+  React.useEffect(() => {
+    // Load theme from user settings if available
+    const storedUserSettings = localStorage.getItem('userSettings');
+    if (storedUserSettings) {
+      try {
+        const settings = JSON.parse(storedUserSettings);
+        if (settings.theme && settings.theme !== theme) {
+          setTheme(settings.theme);
+        }
+      } catch (error) {
+        console.warn('Failed to parse user settings from localStorage:', error);
+      }
+    }
+  }, [theme, setTheme]);
+
+  return <>{children}</>;
+}

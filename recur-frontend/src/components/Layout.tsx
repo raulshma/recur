@@ -42,6 +42,7 @@ import { useAuth } from '../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../api/dashboard';
 import { subscriptionsApi } from '../api/subscriptions';
+import { useTheme } from './theme-provider';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -49,10 +50,10 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Fetch dashboard stats
@@ -109,9 +110,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    // In a real app, this would toggle the theme
-    document.documentElement.classList.toggle('dark');
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
   };
 
   const getUserInitials = () => {
@@ -124,15 +124,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200 flex-shrink-0">
+      <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
           <RectangleStackIcon className="h-5 w-5 text-white" />
         </div>
-        <span className="text-xl font-bold text-gray-900">Recur</span>
+        <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Recur</span>
       </div>
 
       {/* Search */}
-      <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="relative">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input
@@ -160,8 +160,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               to={item.href}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 item.current
-                  ? 'bg-orange-100 text-orange-700 border border-orange-200'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                  ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
@@ -182,7 +182,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <Card className="p-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Monthly Spend</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Monthly Spend</span>
               <span className="text-sm font-medium">
                 {dashboardStats?.totalMonthlyCost 
                   ? formatCurrency(dashboardStats.totalMonthlyCost, dashboardStats.displayCurrency || user?.currency || 'USD')
@@ -191,13 +191,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Active</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Active</span>
               <span className="text-sm font-medium">
                 {dashboardStats?.activeSubscriptions || 0} services
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Next Bill</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Next Bill</span>
               <span className="text-sm font-medium">
                 {dashboardStats?.daysUntilNextBilling 
                   ? `${dashboardStats.daysUntilNextBilling} days`
@@ -222,10 +222,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {user?.firstName} {user?.lastName}
                   </p>
-                  <p className="text-xs text-gray-500">{user?.email}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
                 </div>
               </div>
             </Button>
@@ -238,12 +238,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               Profile Settings
             </DropdownMenuItem>
             <DropdownMenuItem onClick={toggleDarkMode}>
-              {isDarkMode ? (
+              {theme === 'dark' ? (
                 <SunIcon className="h-4 w-4 mr-2" />
               ) : (
                 <MoonIcon className="h-4 w-4 mr-2" />
               )}
-              {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
             </DropdownMenuItem>
             <DropdownMenuItem>
               <QuestionMarkCircleIcon className="h-4 w-4 mr-2" />
@@ -261,17 +261,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Desktop Sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-        <div className="flex-1 border-r border-gray-200 bg-white h-full shadow-sm">
+        <div className="flex-1 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 h-full shadow-sm">
           <SidebarContent />
         </div>
       </div>
 
       {/* Mobile Header */}
       <div className="lg:hidden">
-        <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -287,7 +287,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="w-6 h-6 bg-orange-500 rounded-md flex items-center justify-center">
                 <RectangleStackIcon className="h-4 w-4 text-white" />
               </div>
-              <span className="text-lg font-bold text-gray-900">Recur</span>
+              <span className="text-lg font-bold text-gray-900 dark:text-gray-100">Recur</span>
             </div>
           </div>
 
@@ -363,12 +363,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   Profile Settings
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={toggleDarkMode}>
-                  {isDarkMode ? (
+                  {theme === 'dark' ? (
                     <SunIcon className="h-4 w-4 mr-2" />
                   ) : (
                     <MoonIcon className="h-4 w-4 mr-2" />
                   )}
-                  {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                  {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600">
@@ -392,18 +392,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Footer */}
       <div className="lg:pl-72">
-        <footer className="border-t border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+        <footer className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                 <span>&copy; 2024 Recur. All rights reserved.</span>
-                <Link to="/privacy" className="hover:text-gray-700">Privacy</Link>
-                <Link to="/terms" className="hover:text-gray-700">Terms</Link>
+                <Link to="/privacy" className="hover:text-gray-700 dark:hover:text-gray-300">Privacy</Link>
+                <Link to="/terms" className="hover:text-gray-700 dark:hover:text-gray-300">Terms</Link>
               </div>
-              <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                 <span>Version 1.0.0</span>
-                <Link to="/help" className="hover:text-gray-700">Help</Link>
-                <Link to="/feedback" className="hover:text-gray-700">Feedback</Link>
+                <Link to="/help" className="hover:text-gray-700 dark:hover:text-gray-300">Help</Link>
+                <Link to="/feedback" className="hover:text-gray-700 dark:hover:text-gray-300">Feedback</Link>
               </div>
             </div>
           </div>

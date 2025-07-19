@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PostHogThemeProvider } from './components/theme-provider';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -139,14 +140,16 @@ function AppRoutes() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50 antialiased">
-            <AppRoutes />
-            <Toaster />
-          </div>
-        </Router>
-      </AuthProvider>
+      <PostHogThemeProvider defaultTheme="light" storageKey="recur-ui-theme">
+        <AuthProvider>
+          <Router>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 antialiased">
+              <AppRoutes />
+              <Toaster />
+            </div>
+          </Router>
+        </AuthProvider>
+      </PostHogThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
