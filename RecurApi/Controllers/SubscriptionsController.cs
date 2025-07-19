@@ -18,12 +18,14 @@ public class SubscriptionsController : ControllerBase
     private readonly RecurDbContext _context;
     private readonly UserManager<User> _userManager;
     private readonly ICurrencyConversionService _currencyService;
+    private readonly ISubscriptionHistoryService _historyService;
 
-    public SubscriptionsController(RecurDbContext context, UserManager<User> userManager, ICurrencyConversionService currencyService)
+    public SubscriptionsController(RecurDbContext context, UserManager<User> userManager, ICurrencyConversionService currencyService, ISubscriptionHistoryService historyService)
     {
         _context = context;
         _userManager = userManager;
         _currencyService = currencyService;
+        _historyService = historyService;
     }
 
     [HttpGet]
@@ -144,6 +146,21 @@ public class SubscriptionsController : ControllerBase
         _context.Subscriptions.Add(subscription);
         await _context.SaveChangesAsync();
 
+        // Record creation event in history
+        await _historyService.RecordEventAsync(
+            subscription.Id,
+            userId,
+            SubscriptionEventType.Created,
+            "Subscription Created",
+            $"Subscription for {subscription.Name} was created",
+            new
+            {
+                cost = subscription.Cost,
+                currency = subscription.Currency,
+                billingCycle = GetBillingCycleText(subscription.BillingCycle),
+                category = category.Name
+            });
+
         // Load category for response
         await _context.Entry(subscription)
             .Reference(s => s.Category)
@@ -173,6 +190,17 @@ public class SubscriptionsController : ControllerBase
             return BadRequest("Invalid category");
         }
 
+        // Capture previous values for history
+        var previousValues = new
+        {
+            Name = subscription.Name,
+            Cost = subscription.Cost,
+            Currency = subscription.Currency,
+            BillingCycle = subscription.BillingCycle,
+            IsActive = subscription.IsActive,
+            IsTrial = subscription.IsTrial
+        };
+
         subscription.Name = model.Name;
         subscription.Description = model.Description;
         subscription.Cost = model.Cost;
@@ -190,6 +218,33 @@ public class SubscriptionsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        // Record update event in history
+        var newValues = new
+        {
+            Name = subscription.Name,
+            Cost = subscription.Cost,
+            Currency = subscription.Currency,
+            BillingCycle = subscription.BillingCycle,
+            IsActive = subscription.IsActive,
+            IsTrial = subscription.IsTrial
+        };
+
+        await _historyService.RecordEventAsync(
+            subscription.Id,
+            userId,
+            SubscriptionEventType.Updated,
+            "Subscription Updated",
+            $"Subscription details for {subscription.Name} were modified",
+            new
+            {
+                cost = subscription.Cost,
+                currency = subscription.Currency,
+                billingCycle = GetBillingCycleText(subscription.BillingCycle),
+                category = category.Name
+            },
+            previousValues,
+            newValues);
+
         return NoContent();
     }
 
@@ -205,6 +260,21 @@ public class SubscriptionsController : ControllerBase
         {
             return NotFound();
         }
+
+        // Record deletion event in history before removing
+        await _historyService.RecordEventAsync(
+            subscription.Id,
+            userId,
+            SubscriptionEventType.Deleted,
+            "Subscription Deleted",
+            $"Subscription for {subscription.Name} was permanently deleted",
+            new
+            {
+                cost = subscription.Cost,
+                currency = subscription.Currency,
+                wasActive = subscription.IsActive,
+                deletionDate = DateTime.UtcNow
+            });
 
         _context.Subscriptions.Remove(subscription);
         await _context.SaveChangesAsync();
@@ -225,11 +295,27 @@ public class SubscriptionsController : ControllerBase
             return NotFound();
         }
 
+        var cancellationDate = DateTime.UtcNow;
         subscription.IsActive = false;
-        subscription.CancellationDate = DateTime.UtcNow;
-        subscription.UpdatedAt = DateTime.UtcNow;
+        subscription.CancellationDate = cancellationDate;
+        subscription.UpdatedAt = cancellationDate;
 
         await _context.SaveChangesAsync();
+
+        // Record cancellation event in history
+        await _historyService.RecordEventAsync(
+            subscription.Id,
+            userId,
+            SubscriptionEventType.Cancelled,
+            "Subscription Cancelled",
+            $"Subscription for {subscription.Name} was cancelled",
+            new
+            {
+                reason = "User cancelled subscription",
+                cancellationDate = cancellationDate,
+                cost = subscription.Cost,
+                currency = subscription.Currency
+            });
 
         return NoContent();
     }
@@ -247,11 +333,32 @@ public class SubscriptionsController : ControllerBase
             return NotFound();
         }
 
+        var reactivationDate = DateTime.UtcNow;
+        var previousCancellationDate = subscription.CancellationDate;
+        
         subscription.IsActive = true;
         subscription.CancellationDate = null;
-        subscription.UpdatedAt = DateTime.UtcNow;
+        subscription.UpdatedAt = reactivationDate;
 
         await _context.SaveChangesAsync();
+
+        // Record reactivation event in history
+        await _historyService.RecordEventAsync(
+            subscription.Id,
+            userId,
+            SubscriptionEventType.Reactivated,
+            "Subscription Reactivated",
+            $"Subscription for {subscription.Name} was reactivated",
+            new
+            {
+                reactivationDate = reactivationDate,
+                previousCancellationDate = previousCancellationDate,
+                cost = subscription.Cost,
+                currency = subscription.Currency,
+                daysCancelled = previousCancellationDate.HasValue 
+                    ? (int)(reactivationDate - previousCancellationDate.Value).TotalDays 
+                    : 0
+            });
 
         return NoContent();
     }
@@ -262,7 +369,6 @@ public class SubscriptionsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         
         var subscription = await _context.Subscriptions
-            .Include(s => s.Category)
             .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
 
         if (subscription == null)
@@ -270,80 +376,23 @@ public class SubscriptionsController : ControllerBase
             return NotFound();
         }
 
-        var history = new List<SubscriptionHistoryDto>();
-
-        // Add creation event
-        history.Add(new SubscriptionHistoryDto
+        // Get history from the database
+        var historyEntries = await _historyService.GetHistoryAsync(id);
+        
+        // Convert to DTOs
+        var historyDtos = historyEntries.Select(h => new SubscriptionHistoryDto
         {
-            Id = Guid.NewGuid().ToString(),
-            Type = "created",
-            Title = "Subscription Created",
-            Description = $"Subscription for {subscription.Name} was created",
-            Timestamp = subscription.CreatedAt,
-            Details = new Dictionary<string, object>
-            {
-                ["cost"] = subscription.Cost,
-                ["currency"] = subscription.Currency,
-                ["billingCycle"] = GetBillingCycleText(subscription.BillingCycle),
-                ["category"] = subscription.Category.Name
-            }
+            Id = h.Id.ToString(),
+            Type = h.EventType,
+            Title = h.Title,
+            Description = h.Description,
+            Timestamp = h.Timestamp,
+            Details = !string.IsNullOrEmpty(h.Details) 
+                ? System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(h.Details) ?? new Dictionary<string, object>()
+                : new Dictionary<string, object>()
         });
 
-        // Add cancellation event if cancelled
-        if (subscription.CancellationDate.HasValue)
-        {
-            history.Add(new SubscriptionHistoryDto
-            {
-                Id = Guid.NewGuid().ToString(),
-                Type = "cancelled",
-                Title = "Subscription Cancelled",
-                Description = $"Subscription for {subscription.Name} was cancelled",
-                Timestamp = subscription.CancellationDate.Value,
-                Details = new Dictionary<string, object>
-                {
-                    ["reason"] = "User cancelled subscription"
-                }
-            });
-        }
-
-        // Add trial end event if trial ended
-        if (subscription.IsTrial && subscription.TrialEndDate.HasValue && subscription.TrialEndDate.Value < DateTime.UtcNow)
-        {
-            history.Add(new SubscriptionHistoryDto
-            {
-                Id = Guid.NewGuid().ToString(),
-                Type = "trial_ended",
-                Title = "Trial Period Ended",
-                Description = $"Trial period for {subscription.Name} has ended",
-                Timestamp = subscription.TrialEndDate.Value,
-                Details = new Dictionary<string, object>
-                {
-                    ["trialDuration"] = (subscription.TrialEndDate.Value - subscription.CreatedAt).Days + " days"
-                }
-            });
-        }
-
-        // If last updated differs from created, add update event
-        if (subscription.UpdatedAt > subscription.CreatedAt.AddMinutes(1))
-        {
-            history.Add(new SubscriptionHistoryDto
-            {
-                Id = Guid.NewGuid().ToString(),
-                Type = "updated",
-                Title = "Subscription Updated",
-                Description = $"Subscription details for {subscription.Name} were modified",
-                Timestamp = subscription.UpdatedAt,
-                Details = new Dictionary<string, object>
-                {
-                    ["cost"] = subscription.Cost,
-                    ["currency"] = subscription.Currency,
-                    ["billingCycle"] = GetBillingCycleText(subscription.BillingCycle)
-                }
-            });
-        }
-
-        // Sort by timestamp descending (most recent first)
-        return Ok(history.OrderByDescending(h => h.Timestamp));
+        return Ok(historyDtos);
     }
 
     private static SubscriptionDto MapToSubscriptionDto(Subscription subscription)

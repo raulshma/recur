@@ -174,7 +174,7 @@ export interface ExchangeRatesResponse {
 
 export interface SubscriptionHistory {
   id: string;
-  type: string; // "created", "updated", "cancelled", "trial_ended", "reactivated"
+  type: string; // "created", "updated", "cancelled", "reactivated", "trial_ended", "deleted"
   title: string;
   description: string;
   timestamp: string;

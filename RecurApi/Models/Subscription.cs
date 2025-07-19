@@ -52,6 +52,7 @@ public class Subscription
     public virtual User User { get; set; } = null!;
     public virtual Category Category { get; set; } = null!;
     public virtual ICollection<Alert> Alerts { get; set; } = new List<Alert>();
+    public virtual ICollection<SubscriptionHistory> History { get; set; } = new List<SubscriptionHistory>();
 }
 
 public enum BillingCycle
