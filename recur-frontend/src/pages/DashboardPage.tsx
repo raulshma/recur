@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { dashboardApi, type DashboardStats, type MonthlySpending, type CategorySpending, type UpcomingBill, type RecentActivity } from '../api/dashboard';
 import {
@@ -25,6 +26,7 @@ import { CurrencyDisplay } from '@/components/ui/currency-display';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   // Debug: Log user currency and force re-render when it changes
   useEffect(() => {
@@ -167,7 +169,7 @@ const DashboardPage: React.FC = () => {
             <BellIcon className="h-4 w-4 mr-2" />
             Notifications
           </Button>
-          <Button>
+          <Button onClick={() => navigate('/subscriptions?add=true')}>
             <PlusIcon className="h-4 w-4 mr-2" />
             Add Subscription
           </Button>
@@ -272,7 +274,7 @@ const DashboardPage: React.FC = () => {
                   title="No subscriptions yet"
                   description="Start tracking your subscriptions to see your activity here."
                   action={
-                    <Button>
+                    <Button onClick={() => navigate('/subscriptions?add=true')}>
                       <PlusIcon className="h-4 w-4 mr-2" />
                       Add your first subscription
                     </Button>
@@ -505,15 +507,15 @@ const DashboardPage: React.FC = () => {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/subscriptions?add=true')}>
                 <PlusIcon className="h-4 w-4 mr-2" />
                 Add Subscription
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/analytics')}>
                 <ArrowTrendingUpIcon className="h-4 w-4 mr-2" />
                 View Analytics
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/settings')}>
                 <Cog6ToothIcon className="h-4 w-4 mr-2" />
                 Settings
               </Button>
@@ -576,7 +578,7 @@ const DashboardPage: React.FC = () => {
               )}
 
               {/* General Insights */}
-              <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
+              <div className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
                 <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
                   {dashboardStats?.activeSubscriptions === 0 
                     ? "Start tracking your subscriptions"
@@ -610,7 +612,7 @@ const DashboardPage: React.FC = () => {
                       )
                   }
                 </p>
-                <Button variant="link" className="p-0 h-auto text-orange-600">
+                <Button variant="link" className="p-0 h-auto text-orange-600 dark:text-orange-400">
                   Learn more
                 </Button>
               </div>

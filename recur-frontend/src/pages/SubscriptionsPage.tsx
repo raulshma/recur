@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   PlusIcon,
   FunnelIcon,
@@ -56,6 +57,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const SubscriptionsPage: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const userCurrency = user?.currency || 'USD';
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -90,6 +92,18 @@ const SubscriptionsPage: React.FC = () => {
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Handle URL parameters to auto-open dialog
+  useEffect(() => {
+    const addParam = searchParams.get('add');
+    if (addParam === 'true') {
+      setIsAddDialogOpen(true);
+      // Remove the parameter from URL without reloading
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('add');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Fetch subscriptions from API
   const { data: subscriptions = [] } = useQuery({
@@ -1576,17 +1590,17 @@ const SubscriptionHistoryView: React.FC<{ subscriptionId?: number }> = ({ subscr
   const getHistoryColor = (type: string) => {
     switch (type) {
       case 'created':
-        return 'border-green-200 bg-green-50';
+        return 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20';
       case 'updated':
-        return 'border-blue-200 bg-blue-50';
+        return 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20';
       case 'cancelled':
-        return 'border-red-200 bg-red-50';
+        return 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20';
       case 'reactivated':
-        return 'border-green-200 bg-green-50';
+        return 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20';
       case 'trial_ended':
-        return 'border-orange-200 bg-orange-50';
+        return 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20';
       default:
-        return 'border-gray-200 bg-gray-50';
+        return 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50';
     }
   };
 
@@ -1600,7 +1614,7 @@ const SubscriptionHistoryView: React.FC<{ subscriptionId?: number }> = ({ subscr
 
   if (error) {
     return (
-      <div className="text-center p-8 text-red-600">
+      <div className="text-center p-8 text-red-600 dark:text-red-400">
         Failed to load subscription history. Please try again.
       </div>
     );
