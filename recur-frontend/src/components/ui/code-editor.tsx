@@ -49,10 +49,10 @@ export function CodeEditor({
           </Button>
         )}
       </div>
-      <div className="relative border-2 border-black rounded-lg bg-gray-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <div className="relative border-2 border-black rounded-lg bg-gray-50 dark:bg-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <div className="flex">
           {showLineNumbers && (
-            <div className="flex-shrink-0 p-4 bg-gray-100 border-r-2 border-black text-sm text-gray-500 font-mono select-none">
+            <div className="flex-shrink-0 p-4 bg-gray-100 dark:bg-gray-800 border-r-2 border-black text-sm text-gray-500 dark:text-gray-400 font-mono select-none">
               {lines.map((_, index) => (
                 <div key={index} className="leading-6">
                   {index + 1}
@@ -66,8 +66,8 @@ export function CodeEditor({
             onChange={onChange}
             readOnly={readOnly}
             className={cn(
-              "flex-1 p-4 bg-transparent font-mono text-sm resize-none focus:outline-none leading-6",
-              "placeholder:text-gray-400",
+              "flex-1 p-4 bg-transparent text-gray-900 dark:text-gray-100 font-mono text-sm resize-none focus:outline-none leading-6",
+              "placeholder:text-gray-400 dark:placeholder:text-gray-500",
               className,
             )}
             spellCheck={false}

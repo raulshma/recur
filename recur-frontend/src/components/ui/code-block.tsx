@@ -11,7 +11,7 @@ const CodeBlock = React.forwardRef<HTMLPreElement, CodeBlockProps>(
       <pre
         ref={ref}
         className={cn(
-          "rounded-md bg-gray-900 p-4 text-sm text-gray-100 overflow-x-auto border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+          "rounded-md bg-gray-900 dark:bg-gray-950 p-4 text-sm text-gray-100 dark:text-gray-200 overflow-x-auto border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
           className,
         )}
         {...props}

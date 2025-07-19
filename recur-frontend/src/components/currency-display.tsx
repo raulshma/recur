@@ -90,21 +90,21 @@ export function CurrencyDisplay({
         </span>
         
         {shouldShowOriginal && (
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600 dark:text-gray-400">
             ({formatCurrency(amount, currency)})
           </span>
         )}
         
         {isLoading && (
-          <span className="text-xs text-gray-500">Updating...</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Updating...</span>
         )}
       </div>
 
       {shouldShowRate && convertedAmount.exchangeRate !== 1 && (
-        <div className="text-xs text-gray-500 mt-1">
+        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           1 {currency} = {convertedAmount.exchangeRate.toFixed(4)} {convertedAmount.convertedCurrency}
           {convertedAmount.isStale && (
-            <span className="text-yellow-600 ml-1">(Rate may be outdated)</span>
+            <span className="text-yellow-600 dark:text-yellow-400 ml-1">(Rate may be outdated)</span>
           )}
         </div>
       )}

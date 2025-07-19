@@ -30,7 +30,7 @@ const DrawerOverlay = React.forwardRef<
 DrawerOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const drawerVariants = cva(
-  "fixed z-50 gap-4 bg-white p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] border-4 border-black transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+  "fixed z-50 gap-4 bg-white dark:bg-gray-800 text-gray-950 dark:text-gray-50 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] border-4 border-black transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
   {
     variants: {
       side: {
