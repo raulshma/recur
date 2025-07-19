@@ -88,7 +88,7 @@ export function Heatmap({ data, startDate, endDate, className, cellSize = 12, ga
         {/* Heatmap grid */}
         <div className="flex space-x-1">
           {/* Day labels */}
-          <div className="flex flex-col space-y-1 text-xs text-gray-500 mr-2">
+          <div className="flex flex-col space-y-1 text-xs text-gray-500 dark:text-gray-400 mr-2">
             {["", "Mon", "", "Wed", "", "Fri", ""].map((day, index) => (
               <div key={index} style={{ height: cellSize }} className="flex items-center">
                 {day}
@@ -122,7 +122,7 @@ export function Heatmap({ data, startDate, endDate, className, cellSize = 12, ga
         </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mt-4">
           <span>Less</span>
           <div className="flex space-x-1">
             {Array.from({ length: levels + 1 }, (_, index) => (

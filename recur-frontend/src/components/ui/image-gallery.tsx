@@ -105,7 +105,7 @@ export function ImageGallery({ images, columns = 3, thumbnailSize = "md", classN
                 variant="ghost"
                 size="icon"
                 onClick={closeLightbox}
-                className="absolute top-4 right-4 z-10 text-white hover:bg-white hover:text-black"
+                className="absolute top-4 right-4 z-10 text-white hover:bg-white dark:hover:bg-gray-800 hover:text-black dark:hover:text-white"
               >
                 <X className="h-6 w-6" />
               </Button>
@@ -115,7 +115,7 @@ export function ImageGallery({ images, columns = 3, thumbnailSize = "md", classN
                   variant="ghost"
                   size="icon"
                   onClick={goToPrevious}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white hover:text-black"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white dark:hover:bg-gray-800 hover:text-black dark:hover:text-white"
                 >
                   <ChevronLeft className="h-6 w-6" />
                 </Button>
@@ -126,7 +126,7 @@ export function ImageGallery({ images, columns = 3, thumbnailSize = "md", classN
                   variant="ghost"
                   size="icon"
                   onClick={goToNext}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white hover:text-black"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white dark:hover:bg-gray-800 hover:text-black dark:hover:text-white"
                 >
                   <ChevronRight className="h-6 w-6" />
                 </Button>
