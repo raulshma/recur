@@ -518,7 +518,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("recent-activity")]
-    public async Task<ActionResult<IEnumerable<RecentActivityDto>>> GetRecentActivity()
+    public async Task<ActionResult<IEnumerable<RecentActivityDto>>> GetRecentActivity([FromQuery] string? displayCurrency = null)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -526,23 +526,66 @@ public class DashboardController : ControllerBase
             return Unauthorized();
         }
 
+        // Get user's preferred currency or default to USD
+        var user = await _context.Users.FindAsync(userId);
+        var targetCurrency = displayCurrency ?? user?.Currency ?? "USD";
+
         var recentSubscriptions = await _context.Subscriptions
             .Where(s => s.UserId == userId)
             .Include(s => s.Category)
             .OrderByDescending(s => s.UpdatedAt)
             .Take(5)
-            .Select(s => new RecentActivityDto
-            {
-                Id = s.Id,
-                Type = s.CreatedAt == s.UpdatedAt ? "created" : "updated",
-                Title = s.CreatedAt == s.UpdatedAt ? $"Added {s.Name}" : $"Updated {s.Name}",
-                Description = $"${s.Cost:F2} {s.BillingCycle.ToString().ToLower()}",
-                Timestamp = s.UpdatedAt,
-                CategoryColor = s.Category.Color
-            })
             .ToListAsync();
 
-        return Ok(recentSubscriptions);
+        var recentActivities = new List<RecentActivityDto>();
+
+        foreach (var subscription in recentSubscriptions)
+        {
+            var activity = new RecentActivityDto
+            {
+                Id = subscription.Id,
+                Type = subscription.CreatedAt == subscription.UpdatedAt ? "created" : "updated",
+                Title = subscription.CreatedAt == subscription.UpdatedAt ? $"Added {subscription.Name}" : $"Updated {subscription.Name}",
+                Description = $"{subscription.Cost:F2} {subscription.Currency} {subscription.BillingCycle.ToString().ToLower()}",
+                Timestamp = subscription.UpdatedAt,
+                CategoryColor = subscription.Category.Color,
+                Cost = subscription.Cost,
+                Currency = subscription.Currency,
+                BillingCycle = subscription.BillingCycle.ToString().ToLower()
+            };
+
+            // Convert currency if needed
+            if (subscription.Currency != targetCurrency)
+            {
+                try
+                {
+                    var convertedCost = await _currencyConversionService.ConvertAsync(
+                        subscription.Cost, subscription.Currency, targetCurrency);
+                    
+                    activity.ConvertedCost = convertedCost;
+                    activity.ConvertedCurrency = targetCurrency;
+                    activity.IsConverted = true;
+                    
+                    // Update description to show both currencies
+                    activity.Description = $"{subscription.Cost:F2} {subscription.Currency} ({convertedCost:F2} {targetCurrency}) {subscription.BillingCycle.ToString().ToLower()}";
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to convert {OriginalAmount} {FromCurrency} to {ToCurrency} for recent activity", 
+                        subscription.Cost, subscription.Currency, targetCurrency);
+                    // Keep original values if conversion fails
+                    activity.IsConverted = false;
+                }
+            }
+            else
+            {
+                activity.IsConverted = false;
+            }
+
+            recentActivities.Add(activity);
+        }
+
+        return Ok(recentActivities);
     }
 
     [HttpGet("analytics/overview")]
