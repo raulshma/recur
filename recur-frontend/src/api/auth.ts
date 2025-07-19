@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { LoginRequest, RegisterRequest, AuthResponse, User } from '../types';
+import type { LoginRequest, RegisterRequest, AuthResponse, User, CreateInviteRequestByUser } from '../types';
 
 export const authApi = {
   async login(data: LoginRequest): Promise<AuthResponse> {
@@ -19,6 +19,11 @@ export const authApi = {
 
   async changePassword(data: { currentPassword: string; newPassword: string; confirmNewPassword: string }): Promise<AuthResponse> {
     const response = await apiClient.post<AuthResponse>('/auth/change-password', data);
+    return response.data;
+  },
+
+  async requestInvite(data: CreateInviteRequestByUser): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>('/auth/request-invite', data);
     return response.data;
   },
 

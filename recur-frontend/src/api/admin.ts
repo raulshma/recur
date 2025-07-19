@@ -4,7 +4,8 @@ import type {
   AdminUser, 
   Invite, 
   CreateInviteRequest, 
-  UpdateUserRoleRequest 
+  UpdateUserRoleRequest, 
+  InviteRequest
 } from '../types';
 
 export const adminApi = {
@@ -55,5 +56,29 @@ export const adminApi = {
   async resendInvite(inviteId: number): Promise<Invite> {
     const response = await apiClient.post<Invite>(`/admin/invites/${inviteId}/resend`);
     return response.data;
+  },
+
+  // Invite request management
+  async getInviteRequests(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }): Promise<InviteRequest[]> {
+    const response = await apiClient.get<InviteRequest[]>('/admin/invite-requests', { params });
+    return response.data;
+  },
+
+  async reviewInviteRequest(requestId: number, data: {
+    approve: boolean;
+    reviewNotes?: string;
+    role?: string;
+    expirationDays?: number;
+  }): Promise<InviteRequest> {
+    const response = await apiClient.post<InviteRequest>(`/admin/invite-requests/${requestId}/review`, data);
+    return response.data;
+  },
+
+  async deleteInviteRequest(requestId: number): Promise<void> {
+    await apiClient.delete(`/admin/invite-requests/${requestId}`);
   }
 }; 

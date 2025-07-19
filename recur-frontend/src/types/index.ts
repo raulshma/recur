@@ -225,8 +225,38 @@ export interface AdminStats {
   totalUsers: number;
   activeUsers: number;
   pendingInvites: number;
+  pendingInviteRequests: number;
   totalSubscriptions: number;
   recentUsers: AdminUser[];
   recentInvites: Invite[];
+  recentInviteRequests: InviteRequest[];
+}
+
+export interface InviteRequest {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  message?: string;
+  status: string;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedByName?: string;
+  reviewNotes?: string;
+  generatedInvite?: Invite;
+}
+
+export interface CreateInviteRequestByUser {
+  firstName: string;
+  lastName: string;
+  email: string;
+  message?: string;
+}
+
+export interface ReviewInviteRequest {
+  approve: boolean;
+  reviewNotes?: string;
+  role?: string;
+  expirationDays?: number;
 } 
 

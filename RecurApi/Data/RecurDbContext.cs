@@ -17,6 +17,7 @@ public class RecurDbContext : IdentityDbContext<User>
     public DbSet<ExchangeRate> ExchangeRates { get; set; }
     public DbSet<SubscriptionHistory> SubscriptionHistory { get; set; }
     public DbSet<Invite> Invites { get; set; }
+    public DbSet<InviteRequest> InviteRequests { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -205,6 +206,55 @@ public class RecurDbContext : IdentityDbContext<User>
             entity.HasIndex(i => i.Token)
                   .IsUnique()
                   .HasDatabaseName("IX_Invite_Token");
+        });
+
+        // Configure InviteRequest entity
+        builder.Entity<InviteRequest>(entity =>
+        {
+            entity.HasKey(ir => ir.Id);
+
+            entity.Property(ir => ir.Email)
+                  .IsRequired()
+                  .HasMaxLength(255);
+
+            entity.Property(ir => ir.FirstName)
+                  .IsRequired()
+                  .HasMaxLength(50);
+
+            entity.Property(ir => ir.LastName)
+                  .IsRequired()
+                  .HasMaxLength(50);
+
+            entity.Property(ir => ir.Message)
+                  .HasMaxLength(1000);
+
+            entity.Property(ir => ir.ReviewNotes)
+                  .HasMaxLength(500);
+
+            entity.Property(ir => ir.CreatedAt)
+                  .HasDefaultValueSql("GETUTCDATE()");
+
+            // Configure relationship with ReviewedBy user
+            entity.HasOne(ir => ir.ReviewedBy)
+                  .WithMany()
+                  .HasForeignKey(ir => ir.ReviewedByUserId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            // Configure relationship with generated invite
+            entity.HasOne(ir => ir.GeneratedInvite)
+                  .WithMany()
+                  .HasForeignKey(ir => ir.GeneratedInviteId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            // Create index for efficient querying
+            entity.HasIndex(ir => ir.Email)
+                  .HasDatabaseName("IX_InviteRequest_Email");
+
+            entity.HasIndex(ir => ir.Status)
+                  .HasDatabaseName("IX_InviteRequest_Status");
+
+            entity.HasIndex(ir => ir.CreatedAt)
+                  .HasDatabaseName("IX_InviteRequest_CreatedAt");
         });
 
         // Seed default categories with static CreatedAt values

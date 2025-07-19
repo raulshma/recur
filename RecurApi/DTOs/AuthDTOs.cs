@@ -212,6 +212,55 @@ public class AdminStatsDto
     public int ActiveUsers { get; set; }
     public int PendingInvites { get; set; }
     public int TotalSubscriptions { get; set; }
+    public int PendingInviteRequests { get; set; }
     public List<AdminUserDto> RecentUsers { get; set; } = new List<AdminUserDto>();
     public List<InviteDto> RecentInvites { get; set; } = new List<InviteDto>();
+    public List<InviteRequestDto> RecentInviteRequests { get; set; } = new List<InviteRequestDto>();
+}
+
+// Invite Request DTOs
+public class CreateInviteRequestDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+    
+    [Required]
+    [MaxLength(50)]
+    public string FirstName { get; set; } = string.Empty;
+    
+    [Required]
+    [MaxLength(50)]
+    public string LastName { get; set; } = string.Empty;
+    
+    [MaxLength(1000)]
+    public string? Message { get; set; }
+}
+
+public class InviteRequestDto
+{
+    public int Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string? Message { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? ReviewedAt { get; set; }
+    public string? ReviewedByName { get; set; }
+    public string? ReviewNotes { get; set; }
+    public InviteDto? GeneratedInvite { get; set; }
+}
+
+public class ReviewInviteRequestDto
+{
+    [Required]
+    public bool Approve { get; set; }
+    
+    [MaxLength(500)]
+    public string? ReviewNotes { get; set; }
+    
+    // Only used when approving
+    public string Role { get; set; } = "User";
+    public int ExpirationDays { get; set; } = 7;
 } 
