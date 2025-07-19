@@ -170,5 +170,14 @@ export interface ExchangeRatesResponse {
   rates: Record<string, number>;
   timestamp: string;
   success: boolean;
+}
+
+export interface SubscriptionHistory {
+  id: string;
+  type: string; // "created", "updated", "cancelled", "trial_ended", "reactivated"
+  title: string;
+  description: string;
+  timestamp: string;
+  details: Record<string, any>;
 } 
 
