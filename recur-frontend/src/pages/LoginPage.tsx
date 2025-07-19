@@ -234,7 +234,7 @@ const LoginPage: React.FC = () => {
               </Button>
               
               <div className="mt-4 text-center">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Don't have an account?{' '}
                   <Link 
                     to="/register" 

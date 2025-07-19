@@ -86,7 +86,7 @@ export function SortableList({
           onDrop={(e) => handleDrop(e, item.id)}
           onDragEnd={handleDragEnd}
           className={cn(
-            "flex items-center space-x-3 p-3 border-2 border-black rounded-lg bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all cursor-move",
+            "flex items-center space-x-3 p-3 border-2 border-black rounded-lg bg-white dark:bg-gray-800 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all cursor-move",
             draggedItem === item.id && "opacity-50 rotate-2",
             dragOverItem === item.id && "border-orange-500 bg-orange-50",
             "hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]",

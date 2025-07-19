@@ -155,10 +155,10 @@ const DashboardPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             Welcome back, {user?.firstName}!
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             Here's an overview of your subscriptions and upcoming bills.
           </p>
         </div>
@@ -184,8 +184,8 @@ const DashboardPage: React.FC = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                      <div className="text-3xl font-bold text-gray-900 mt-2">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
+                      <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2">
                         <CurrencyDisplay
                           amount={dashboardStats.totalMonthlyCost}
                           currency={dashboardStats.displayCurrency || userCurrency}
@@ -206,13 +206,13 @@ const DashboardPage: React.FC = () => {
                       </div>
                       {stat.change && (
                         <div className="flex items-center mt-2 space-x-1">
-                          <span className="text-sm font-medium text-gray-600">
+                          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                             {stat.change.period}
                           </span>
                         </div>
                       )}
                     </div>
-                    {stat.icon && <div className="text-gray-400">{stat.icon}</div>}
+                    {stat.icon && <div className="text-gray-400 dark:text-gray-500">{stat.icon}</div>}
                   </div>
                 </CardContent>
               </Card>
@@ -353,7 +353,7 @@ const DashboardPage: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-blue-500" />
                             <span className="font-medium">{breakdown.currency}</span>
-                            <span className="text-gray-500">
+                            <span className="text-gray-500 dark:text-gray-500">
                               ({breakdown.subscriptionCount} subscription{breakdown.subscriptionCount !== 1 ? 's' : ''})
                             </span>
                           </div>
@@ -374,10 +374,10 @@ const DashboardPage: React.FC = () => {
                                 size="sm"
                               />
                             </div>
-                            <div className="text-xs text-gray-500">{percentage.toFixed(1)}%</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-500">{percentage.toFixed(1)}%</div>
                           </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                           <div 
                             className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${percentage}%` }}
@@ -408,12 +408,12 @@ const DashboardPage: React.FC = () => {
                       <div key={index} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div 
-                            className="w-3 h-3 rounded-full border border-black"
+                            className="w-3 h-3 rounded-full border border-black dark:border-gray-400"
                             style={{ backgroundColor: category.color }}
                           />
                           <span className="text-sm font-medium">{category.name}</span>
                         </div>
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
                           <CurrencyDisplay
                             amount={category.value}
                             currency={dashboardStats?.displayCurrency || userCurrency}
@@ -429,8 +429,8 @@ const DashboardPage: React.FC = () => {
                 </>
               ) : (
                 <div className="text-center py-6">
-                  <ChartBarIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">No spending data yet</p>
+                  <ChartBarIcon className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400">No spending data yet</p>
                 </div>
               )}
             </CardContent>
@@ -450,8 +450,8 @@ const DashboardPage: React.FC = () => {
             <CardContent>
               {upcomingBills.length === 0 ? (
                 <div className="text-center py-6">
-                  <ClockIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">No upcoming bills</p>
+                  <ClockIcon className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400">No upcoming bills</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -468,7 +468,7 @@ const DashboardPage: React.FC = () => {
                     } : undefined;
 
                     return (
-                      <div key={bill.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                      <div key={bill.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div 
                             className="w-3 h-3 rounded-full flex-shrink-0"
@@ -476,7 +476,7 @@ const DashboardPage: React.FC = () => {
                           />
                           <div>
                             <p className="font-medium">{bill.name}</p>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
                               {new Date(bill.date).toLocaleDateString()} - {bill.categoryName}
                             </p>
                           </div>

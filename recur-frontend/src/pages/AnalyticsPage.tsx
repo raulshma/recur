@@ -212,7 +212,7 @@ const AnalyticsPage: React.FC = () => {
         return <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />;
       case "stable":
       default:
-        return <div className="h-4 w-4 bg-gray-400 rounded-full" />;
+        return <div className="h-4 w-4 bg-gray-400 dark:bg-gray-500 rounded-full" />;
     }
   };
 
@@ -222,7 +222,7 @@ const AnalyticsPage: React.FC = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading analytics...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading analytics...</p>
           </div>
         </div>
       </div>
@@ -250,8 +250,8 @@ const AnalyticsPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Analytics</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             Deep insights into your subscription spending patterns and trends.
           </p>
         </div>
@@ -357,7 +357,7 @@ const AnalyticsPage: React.FC = () => {
                               {category.name}
                             </span>
                           </div>
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
                             {formatCurrency(category.value, displayCurrency)}
                           </span>
                         </div>
@@ -392,7 +392,7 @@ const AnalyticsPage: React.FC = () => {
                       className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="text-lg font-bold text-gray-500">
+                        <div className="text-lg font-bold text-gray-500 dark:text-gray-500">
                           #{index + 1}
                         </div>
                         <div
@@ -403,7 +403,7 @@ const AnalyticsPage: React.FC = () => {
                         />
                         <div>
                           <p className="font-medium">{subscription.name}</p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
                             {subscription.categoryName} -{" "}
                             {subscription.billingCycle}
                           </p>
