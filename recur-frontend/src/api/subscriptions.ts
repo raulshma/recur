@@ -3,7 +3,8 @@ import type {
   Subscription, 
   CreateSubscriptionRequest, 
   UpdateSubscriptionRequest, 
-  SubscriptionFilters 
+  SubscriptionFilters,
+  SubscriptionHistory 
 } from '../types';
 
 export const subscriptionsApi = {
@@ -36,5 +37,10 @@ export const subscriptionsApi = {
 
   async reactivateSubscription(id: number): Promise<void> {
     await apiClient.post(`/subscriptions/${id}/reactivate`);
+  },
+
+  async getSubscriptionHistory(id: number): Promise<SubscriptionHistory[]> {
+    const response = await apiClient.get<SubscriptionHistory[]>(`/subscriptions/${id}/history`);
+    return response.data;
   }
 }; 

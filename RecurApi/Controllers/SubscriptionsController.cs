@@ -256,6 +256,96 @@ public class SubscriptionsController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("{id}/history")]
+    public async Task<ActionResult<IEnumerable<SubscriptionHistoryDto>>> GetSubscriptionHistory(int id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        
+        var subscription = await _context.Subscriptions
+            .Include(s => s.Category)
+            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+
+        if (subscription == null)
+        {
+            return NotFound();
+        }
+
+        var history = new List<SubscriptionHistoryDto>();
+
+        // Add creation event
+        history.Add(new SubscriptionHistoryDto
+        {
+            Id = Guid.NewGuid().ToString(),
+            Type = "created",
+            Title = "Subscription Created",
+            Description = $"Subscription for {subscription.Name} was created",
+            Timestamp = subscription.CreatedAt,
+            Details = new Dictionary<string, object>
+            {
+                ["cost"] = subscription.Cost,
+                ["currency"] = subscription.Currency,
+                ["billingCycle"] = GetBillingCycleText(subscription.BillingCycle),
+                ["category"] = subscription.Category.Name
+            }
+        });
+
+        // Add cancellation event if cancelled
+        if (subscription.CancellationDate.HasValue)
+        {
+            history.Add(new SubscriptionHistoryDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                Type = "cancelled",
+                Title = "Subscription Cancelled",
+                Description = $"Subscription for {subscription.Name} was cancelled",
+                Timestamp = subscription.CancellationDate.Value,
+                Details = new Dictionary<string, object>
+                {
+                    ["reason"] = "User cancelled subscription"
+                }
+            });
+        }
+
+        // Add trial end event if trial ended
+        if (subscription.IsTrial && subscription.TrialEndDate.HasValue && subscription.TrialEndDate.Value < DateTime.UtcNow)
+        {
+            history.Add(new SubscriptionHistoryDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                Type = "trial_ended",
+                Title = "Trial Period Ended",
+                Description = $"Trial period for {subscription.Name} has ended",
+                Timestamp = subscription.TrialEndDate.Value,
+                Details = new Dictionary<string, object>
+                {
+                    ["trialDuration"] = (subscription.TrialEndDate.Value - subscription.CreatedAt).Days + " days"
+                }
+            });
+        }
+
+        // If last updated differs from created, add update event
+        if (subscription.UpdatedAt > subscription.CreatedAt.AddMinutes(1))
+        {
+            history.Add(new SubscriptionHistoryDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                Type = "updated",
+                Title = "Subscription Updated",
+                Description = $"Subscription details for {subscription.Name} were modified",
+                Timestamp = subscription.UpdatedAt,
+                Details = new Dictionary<string, object>
+                {
+                    ["cost"] = subscription.Cost,
+                    ["currency"] = subscription.Currency,
+                    ["billingCycle"] = GetBillingCycleText(subscription.BillingCycle)
+                }
+            });
+        }
+
+        // Sort by timestamp descending (most recent first)
+        return Ok(history.OrderByDescending(h => h.Timestamp));
+    }
+
     private static SubscriptionDto MapToSubscriptionDto(Subscription subscription)
     {
         return new SubscriptionDto

@@ -12,6 +12,9 @@ import {
   XCircleIcon,
   ClockIcon,
   RectangleStackIcon,
+  StopIcon,
+  PlayIcon,
+  ClockIcon as HistoryIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -44,7 +47,7 @@ import * as z from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptionsApi } from '../api/subscriptions';
 import { categoriesApi } from '../api/categories';
-import type { Subscription, CreateSubscriptionRequest, UpdateSubscriptionRequest, BillingCycle } from '../types';
+import type { Subscription, CreateSubscriptionRequest, UpdateSubscriptionRequest, BillingCycle, SubscriptionHistory } from '../types';
 import { SUPPORTED_CURRENCIES } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
@@ -62,6 +65,14 @@ const SubscriptionsPage: React.FC = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<Subscription | null>(null);
   
+  // Cancellation state
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [subscriptionToCancel, setSubscriptionToCancel] = useState<Subscription | null>(null);
+  
+  // Reactivation state
+  const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
+  const [subscriptionToReactivate, setSubscriptionToReactivate] = useState<Subscription | null>(null);
+  
   // View Details state
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [subscriptionToView, setSubscriptionToView] = useState<Subscription | null>(null);
@@ -69,6 +80,10 @@ const SubscriptionsPage: React.FC = () => {
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [subscriptionToEdit, setSubscriptionToEdit] = useState<Subscription | null>(null);
+  
+  // History state
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [subscriptionForHistory, setSubscriptionForHistory] = useState<Subscription | null>(null);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -156,17 +171,86 @@ const SubscriptionsPage: React.FC = () => {
     },
   });
 
+  // Cancel subscription mutation
+  const cancelSubscriptionMutation = useMutation({
+    mutationFn: (id: number) => subscriptionsApi.cancelSubscription(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      setCancelConfirmOpen(false);
+      setSubscriptionToCancel(null);
+      toast({
+        title: "Success",
+        description: "Subscription cancelled successfully!",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      console.error('Error cancelling subscription:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel subscription. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reactivate subscription mutation
+  const reactivateSubscriptionMutation = useMutation({
+    mutationFn: (id: number) => subscriptionsApi.reactivateSubscription(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      setReactivateConfirmOpen(false);
+      setSubscriptionToReactivate(null);
+      toast({
+        title: "Success",
+        description: "Subscription reactivated successfully!",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      console.error('Error reactivating subscription:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reactivate subscription. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Form validation schema
   const formSchema = z.object({
     name: z.string().min(1, 'Service name is required').max(200, 'Name too long'),
     cost: z.string().min(1, 'Cost is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Must be a valid positive number'),
     billingCycle: z.string().min(1, 'Billing cycle is required'),
-    nextBillingDate: z.string().min(1, 'Next billing date is required'),
+    nextBillingDate: z.string().min(1, 'Next billing date is required').refine((date) => {
+      const selectedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return selectedDate >= today;
+    }, 'Next billing date cannot be in the past'),
     categoryId: z.string().min(1, 'Category is required'),
     description: z.string().max(1000, 'Description too long').optional(),
     website: z.string().url('Must be a valid URL').max(500, 'URL too long').optional().or(z.literal('')),
+    contactEmail: z.string().email('Must be a valid email').max(200, 'Email too long').optional().or(z.literal('')),
+    notes: z.string().max(1000, 'Notes too long').optional(),
+    trialEndDate: z.string().optional().refine((date) => {
+      if (!date) return true; // Optional field
+      const selectedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return selectedDate > today;
+    }, 'Trial end date must be in the future'),
     currency: z.string().default('USD'),
     isTrial: z.boolean().default(false),
+  }).refine((data) => {
+    // Cross-field validation: if isTrial is true, trialEndDate should be provided
+    if (data.isTrial && !data.trialEndDate) {
+      return false;
+    }
+    return true;
+  }, {
+    message: 'Trial end date is required when subscription is marked as trial',
+    path: ['trialEndDate']
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -179,6 +263,9 @@ const SubscriptionsPage: React.FC = () => {
       categoryId: '',
       description: '',
       website: '',
+      contactEmail: '',
+      notes: '',
+      trialEndDate: '',
       currency: userCurrency,
       isTrial: false,
     },
@@ -195,6 +282,9 @@ const SubscriptionsPage: React.FC = () => {
       categoryId: '',
       description: '',
       website: '',
+      contactEmail: '',
+      notes: '',
+      trialEndDate: '',
       currency: userCurrency,
       isTrial: false,
     },
@@ -214,11 +304,35 @@ const SubscriptionsPage: React.FC = () => {
 
   const getStatusBadge = (subscription: Subscription) => {
     if (!subscription.isActive) {
+      if (subscription.cancellationDate) {
+        const daysCancelled = Math.ceil((new Date().getTime() - new Date(subscription.cancellationDate).getTime()) / (1000 * 60 * 60 * 24));
+        return (
+          <div className="flex flex-col items-start">
+            <Badge variant="destructive">Cancelled</Badge>
+            <span className="text-xs text-gray-500 mt-1">{daysCancelled} days ago</span>
+          </div>
+        );
+      }
       return <Badge variant="destructive">Inactive</Badge>;
     }
+    
     if (subscription.isTrial) {
+      if (subscription.trialEndDate) {
+        const daysUntilTrialEnd = Math.ceil((new Date(subscription.trialEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        if (daysUntilTrialEnd <= 0) {
+          return <Badge variant="destructive">Trial Expired</Badge>;
+        } else if (daysUntilTrialEnd <= 3) {
+          return (
+            <div className="flex flex-col items-start">
+              <Badge variant="warning">Trial Ending</Badge>
+              <span className="text-xs text-orange-600 mt-1">{daysUntilTrialEnd} days left</span>
+            </div>
+          );
+        }
+      }
       return <Badge variant="warning">Trial</Badge>;
     }
+    
     return <Badge variant="success">Active</Badge>;
   };
 
@@ -340,6 +454,9 @@ const SubscriptionsPage: React.FC = () => {
                   categoryId: row.category.id.toString(),
                   description: row.description ?? '',
                   website: row.website ?? '',
+                  contactEmail: row.contactEmail ?? '',
+                  notes: row.notes ?? '',
+                  trialEndDate: row.trialEndDate ? row.trialEndDate.slice(0, 10) : '',
                   currency: row.currency,
                   isTrial: row.isTrial,
                 });
@@ -347,6 +464,39 @@ const SubscriptionsPage: React.FC = () => {
             >
               <PencilIcon className="h-4 w-4 mr-2" />
               Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {row.isActive ? (
+              <DropdownMenuItem 
+                className="text-orange-600"
+                onClick={() => {
+                  setSubscriptionToCancel(row);
+                  setCancelConfirmOpen(true);
+                }}
+              >
+                <StopIcon className="h-4 w-4 mr-2" />
+                Cancel Subscription
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem 
+                className="text-green-600"
+                onClick={() => {
+                  setSubscriptionToReactivate(row);
+                  setReactivateConfirmOpen(true);
+                }}
+              >
+                <PlayIcon className="h-4 w-4 mr-2" />
+                Reactivate
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              onClick={() => {
+                setSubscriptionForHistory(row);
+                setHistoryDialogOpen(true);
+              }}
+            >
+              <HistoryIcon className="h-4 w-4 mr-2" />
+              View History
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
@@ -370,6 +520,25 @@ const SubscriptionsPage: React.FC = () => {
       console.log('Form submission started');
       console.log('Form data:', data);
       
+      // Additional client-side validation
+      if (data.isTrial && !data.trialEndDate) {
+        toast({
+          title: "Validation Error",
+          description: "Trial end date is required for trial subscriptions.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.trialEndDate && new Date(data.trialEndDate) <= new Date()) {
+        toast({
+          title: "Validation Error",
+          description: "Trial end date must be in the future.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Transform form data to API format
       const subscriptionData: CreateSubscriptionRequest = {
         name: data.name,
@@ -381,12 +550,20 @@ const SubscriptionsPage: React.FC = () => {
         website: data.website || undefined,
         categoryId: Number(data.categoryId),
         isTrial: data.isTrial,
+        contactEmail: data.contactEmail || undefined,
+        notes: data.notes || undefined,
+        trialEndDate: data.trialEndDate || undefined,
       };
       
       console.log('Submitting to API:', subscriptionData);
       createSubscriptionMutation.mutate(subscriptionData);
     } catch (error) {
       console.error('Error submitting form:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -403,23 +580,38 @@ const SubscriptionsPage: React.FC = () => {
     const matchesSearch = sub.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          sub.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || sub.category.id.toString() === categoryFilter;
+    
+    // Enhanced status filtering
+    const isTrialExpired = sub.isTrial && sub.trialEndDate && new Date(sub.trialEndDate) <= new Date();
+    const isTrialActive = sub.isTrial && sub.trialEndDate && new Date(sub.trialEndDate) > new Date();
+    
     const matchesStatus = statusFilter === 'all' ||
-                         (statusFilter === 'active' && sub.isActive) ||
+                         (statusFilter === 'active' && sub.isActive && !sub.isTrial) ||
                          (statusFilter === 'inactive' && !sub.isActive) ||
                          (statusFilter === 'trial' && sub.isTrial);
+    
     const matchesTab = activeTab === 'all' ||
-                      (activeTab === 'active' && sub.isActive) ||
-                      (activeTab === 'trial' && sub.isTrial) ||
-                      (activeTab === 'inactive' && !sub.isActive);
+                      (activeTab === 'active' && sub.isActive && !isTrialExpired) ||
+                      (activeTab === 'trial' && sub.isTrial && !isTrialExpired) ||
+                      (activeTab === 'inactive' && (!sub.isActive || isTrialExpired));
 
     return matchesSearch && matchesCategory && matchesStatus && matchesTab;
   });
 
   const stats = {
     total: subscriptions.length,
-    active: subscriptions.filter(s => s.isActive).length,
-    trial: subscriptions.filter(s => s.isTrial).length,
-    inactive: subscriptions.filter(s => !s.isActive).length,
+    active: subscriptions.filter(s => {
+      const isTrialExpired = s.isTrial && s.trialEndDate && new Date(s.trialEndDate) <= new Date();
+      return s.isActive && !isTrialExpired;
+    }).length,
+    trial: subscriptions.filter(s => {
+      const isTrialExpired = s.isTrial && s.trialEndDate && new Date(s.trialEndDate) <= new Date();
+      return s.isTrial && !isTrialExpired;
+    }).length,
+    inactive: subscriptions.filter(s => {
+      const isTrialExpired = s.isTrial && s.trialEndDate && new Date(s.trialEndDate) <= new Date();
+      return !s.isActive || isTrialExpired;
+    }).length,
   };
 
   return (
@@ -520,7 +712,9 @@ const SubscriptionsPage: React.FC = () => {
                               <SelectItem value="1">Weekly</SelectItem>
                               <SelectItem value="2">Monthly</SelectItem>
                               <SelectItem value="3">Quarterly</SelectItem>
+                              <SelectItem value="4">Semi-annually</SelectItem>
                               <SelectItem value="5">Annually</SelectItem>
+                              <SelectItem value="6">Biannually</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -579,9 +773,52 @@ const SubscriptionsPage: React.FC = () => {
                     />
                     <FormField
                       control={form.control}
-                      name="description"
+                      name="contactEmail"
                       render={({ field }) => (
                         <FormItem className="col-span-2">
+                          <FormLabel>Contact Email (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="support@example.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="isTrial"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-y-0 space-x-3">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={field.onChange}
+                              className="h-4 w-4 rounded border border-input"
+                            />
+                          </FormControl>
+                          <FormLabel>Is Trial Subscription</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="trialEndDate"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Trial End Date (Optional)</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem className="col-span-3">
                           <FormLabel>Description (Optional)</FormLabel>
                           <FormControl>
                             <Input placeholder="Brief description..." {...field} />
@@ -590,12 +827,35 @@ const SubscriptionsPage: React.FC = () => {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem className="col-span-3">
+                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Additional notes..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsAddDialogOpen(false)}
+                      disabled={createSubscriptionMutation.isPending}
+                    >
                       Cancel
                     </Button>
-                    <Button type="submit">Add Subscription</Button>
+                    <Button 
+                      type="submit" 
+                      disabled={createSubscriptionMutation.isPending}
+                    >
+                      {createSubscriptionMutation.isPending ? 'Adding...' : 'Add Subscription'}
+                    </Button>
                   </DialogFooter>
                 </form>
               </Form>
@@ -828,6 +1088,30 @@ const SubscriptionsPage: React.FC = () => {
                 {getStatusBadge(subscriptionToView)}
               </div>
 
+              {subscriptionToView.isTrial && subscriptionToView.trialEndDate && (
+                <div className="sm:col-span-2">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Trial End Date</p>
+                  <p className="font-medium text-orange-600">
+                    {new Date(subscriptionToView.trialEndDate).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {getDaysUntilBilling(subscriptionToView.trialEndDate)} until trial ends
+                  </p>
+                </div>
+              )}
+
+              {!subscriptionToView.isActive && subscriptionToView.cancellationDate && (
+                <div className="sm:col-span-2">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Cancellation Date</p>
+                  <p className="font-medium text-red-600">
+                    {new Date(subscriptionToView.cancellationDate).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Cancelled {Math.ceil((new Date().getTime() - new Date(subscriptionToView.cancellationDate).getTime()) / (1000 * 60 * 60 * 24))} days ago
+                  </p>
+                </div>
+              )}
+
               {subscriptionToView.website && (
                 <div className="sm:col-span-2">
                   <p className="text-sm font-medium text-gray-600 mb-1">Website</p>
@@ -835,9 +1119,21 @@ const SubscriptionsPage: React.FC = () => {
                     href={subscriptionToView.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-orange-600 hover:text-orange-700 hover:underline font-medium"
+                    className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
                   >
                     {subscriptionToView.website}
+                  </a>
+                </div>
+              )}
+
+              {subscriptionToView.contactEmail && (
+                <div className="sm:col-span-2">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Contact Email</p>
+                  <a
+                    href={`mailto:${subscriptionToView.contactEmail}`}
+                    className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                  >
+                    {subscriptionToView.contactEmail}
                   </a>
                 </div>
               )}
@@ -849,18 +1145,29 @@ const SubscriptionsPage: React.FC = () => {
                 </div>
               )}
 
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Created</p>
-                <p className="text-sm text-gray-500">
-                  {new Date(subscriptionToView.createdAt).toLocaleDateString()}
-                </p>
-              </div>
+              {subscriptionToView.notes && (
+                <div className="sm:col-span-2">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Notes</p>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg border">{subscriptionToView.notes}</p>
+                </div>
+              )}
 
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Last Updated</p>
-                <p className="text-sm text-gray-500">
-                  {new Date(subscriptionToView.updatedAt).toLocaleDateString()}
-                </p>
+              <div className="border-t pt-4 sm:col-span-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-1">Created</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(subscriptionToView.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-1">Last Updated</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(subscriptionToView.updatedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -909,6 +1216,9 @@ const SubscriptionsPage: React.FC = () => {
                   // Preserve existing flags
                   isActive: subscriptionToEdit.isActive,
                   isTrial: data.isTrial,
+                  contactEmail: data.contactEmail || undefined,
+                  notes: data.notes || undefined,
+                  trialEndDate: data.trialEndDate || undefined,
                 };
                 
                 updateSubscriptionMutation.mutate({ 
@@ -1054,12 +1364,72 @@ const SubscriptionsPage: React.FC = () => {
                 
                 <FormField
                   control={editForm.control}
-                  name="description"
+                  name="contactEmail"
                   render={({ field }) => (
                     <FormItem className="col-span-2">
+                      <FormLabel>Contact Email (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="support@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="isTrial"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-y-0 space-x-3">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="h-4 w-4 rounded border border-input"
+                        />
+                      </FormControl>
+                      <FormLabel>Is Trial Subscription</FormLabel>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="trialEndDate"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Trial End Date (Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="col-span-3">
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
                         <Input placeholder="Brief description..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem className="col-span-3">
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Additional notes..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1103,6 +1473,177 @@ const SubscriptionsPage: React.FC = () => {
           }
         }}
       />
+
+      {/* Cancel Confirmation Dialog */}
+      <ConfirmationDialog
+        open={cancelConfirmOpen}
+        onOpenChange={setCancelConfirmOpen}
+        title="Cancel Subscription"
+        description={`Are you sure you want to cancel "${subscriptionToCancel?.name}"? The subscription will be marked as inactive and the cancellation date will be recorded. You can reactivate it later if needed.`}
+        confirmText={cancelSubscriptionMutation.isPending ? "Cancelling..." : "Cancel Subscription"}
+        cancelText="Keep Active"
+        variant="destructive"
+        onConfirm={() => {
+          if (subscriptionToCancel && !cancelSubscriptionMutation.isPending) {
+            cancelSubscriptionMutation.mutate(subscriptionToCancel.id);
+          }
+        }}
+      />
+
+      {/* Reactivate Confirmation Dialog */}
+      <ConfirmationDialog
+        open={reactivateConfirmOpen}
+        onOpenChange={setReactivateConfirmOpen}
+        title="Reactivate Subscription"
+        description={`Are you sure you want to reactivate "${subscriptionToReactivate?.name}"? The subscription will be marked as active and the cancellation date will be cleared.`}
+        confirmText={reactivateSubscriptionMutation.isPending ? "Reactivating..." : "Reactivate"}
+        cancelText="Keep Cancelled"
+        variant="default"
+        onConfirm={() => {
+          if (subscriptionToReactivate && !reactivateSubscriptionMutation.isPending) {
+            reactivateSubscriptionMutation.mutate(subscriptionToReactivate.id);
+          }
+        }}
+      />
+
+      {/* Subscription History Dialog */}
+      <Dialog 
+        open={historyDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) setSubscriptionForHistory(null);
+          setHistoryDialogOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Subscription History</DialogTitle>
+            <DialogDescription>
+              {subscriptionForHistory?.name} - Timeline of changes and events
+            </DialogDescription>
+          </DialogHeader>
+
+          <SubscriptionHistoryView subscriptionId={subscriptionForHistory?.id} />
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+// Subscription History Component
+const SubscriptionHistoryView: React.FC<{ subscriptionId?: number }> = ({ subscriptionId }) => {
+  const { data: history = [], isLoading, error } = useQuery({
+    queryKey: ['subscription-history', subscriptionId],
+    queryFn: () => subscriptionId ? subscriptionsApi.getSubscriptionHistory(subscriptionId) : Promise.resolve([]),
+    enabled: !!subscriptionId,
+  });
+
+  const getHistoryIcon = (type: string) => {
+    switch (type) {
+      case 'created':
+        return <PlusIcon className="h-4 w-4 text-green-600" />;
+      case 'updated':
+        return <PencilIcon className="h-4 w-4 text-blue-600" />;
+      case 'cancelled':
+        return <StopIcon className="h-4 w-4 text-red-600" />;
+      case 'reactivated':
+        return <PlayIcon className="h-4 w-4 text-green-600" />;
+      case 'trial_ended':
+        return <ClockIcon className="h-4 w-4 text-orange-600" />;
+      default:
+        return <TagIcon className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
+  const getHistoryColor = (type: string) => {
+    switch (type) {
+      case 'created':
+        return 'border-green-200 bg-green-50';
+      case 'updated':
+        return 'border-blue-200 bg-blue-50';
+      case 'cancelled':
+        return 'border-red-200 bg-red-50';
+      case 'reactivated':
+        return 'border-green-200 bg-green-50';
+      case 'trial_ended':
+        return 'border-orange-200 bg-orange-50';
+      default:
+        return 'border-gray-200 bg-gray-50';
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-8 text-red-600">
+        Failed to load subscription history. Please try again.
+      </div>
+    );
+  }
+
+  if (history.length === 0) {
+    return (
+      <div className="text-center p-8 text-gray-500">
+        No history events found for this subscription.
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-h-[400px] overflow-y-auto">
+      <div className="space-y-4">
+        {history.map((event, index) => (
+          <div key={event.id} className="relative">
+            {/* Timeline line */}
+            {index < history.length - 1 && (
+              <div className="absolute left-6 top-12 w-0.5 h-8 bg-gray-200"></div>
+            )}
+            
+            <div className={`flex items-start space-x-4 p-4 rounded-lg border ${getHistoryColor(event.type)}`}>
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white border-2 border-current flex items-center justify-center">
+                {getHistoryIcon(event.type)}
+              </div>
+              
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-gray-900">{event.title}</h4>
+                  <span className="text-sm text-gray-500">
+                    {new Date(event.timestamp).toLocaleDateString()} at{' '}
+                    {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                
+                <p className="text-gray-600 mt-1">{event.description}</p>
+                
+                {Object.keys(event.details).length > 0 && (
+                  <div className="mt-3 p-3 bg-white rounded border">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {Object.entries(event.details).map(([key, value]) => (
+                        <div key={key}>
+                          <span className="font-medium text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span>
+                          <span className="ml-2 text-gray-900">{String(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

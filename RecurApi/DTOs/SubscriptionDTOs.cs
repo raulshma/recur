@@ -288,3 +288,13 @@ public class CurrencyBreakdown
     public decimal ConvertedAmount { get; set; }
     public int SubscriptionCount { get; set; }
 }
+
+public class SubscriptionHistoryDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // "created", "updated", "cancelled", "trial_ended", "reactivated"
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public Dictionary<string, object> Details { get; set; } = new();
+}
