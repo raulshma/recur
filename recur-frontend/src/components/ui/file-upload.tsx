@@ -4,6 +4,7 @@ import * as React from "react"
 import { Upload, X, File } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 
 interface FileUploadProps {
   onFilesChange?: (files: File[]) => void
@@ -25,13 +26,18 @@ export function FileUpload({
   const [files, setFiles] = React.useState<File[]>([])
   const [dragActive, setDragActive] = React.useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
 
   const handleFiles = (newFiles: FileList | null) => {
     if (!newFiles) return
 
     const validFiles = Array.from(newFiles).filter((file) => {
       if (maxSize && file.size > maxSize) {
-        alert(`File ${file.name} is too large. Maximum size is ${maxSize / 1024 / 1024}MB`)
+        toast({
+          title: "File Too Large",
+          description: `File ${file.name} is too large. Maximum size is ${maxSize / 1024 / 1024}MB`,
+          variant: "destructive",
+        })
         return false
       }
       return true
