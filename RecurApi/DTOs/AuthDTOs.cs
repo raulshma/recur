@@ -101,7 +101,8 @@ public class UpdateProfileDto
 
 public class UserSettingsDto
 {
-    public bool EmailNotifications { get; set; } = true;
+    public bool DiscordNotifications { get; set; } = false;
+    public string? DiscordWebhookUrl { get; set; }
     public bool TrialEndingAlerts { get; set; } = true;
     public bool BillingReminders { get; set; } = true;
     public bool PriceChangeAlerts { get; set; } = true;
@@ -118,7 +119,10 @@ public class UserSettingsDto
 
 public class UpdateUserSettingsDto
 {
-    public bool EmailNotifications { get; set; } = true;
+    public bool DiscordNotifications { get; set; } = false;
+    
+    public string? DiscordWebhookUrl { get; set; }
+    
     public bool TrialEndingAlerts { get; set; } = true;
     public bool BillingReminders { get; set; } = true;
     public bool PriceChangeAlerts { get; set; } = true;

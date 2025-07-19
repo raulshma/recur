@@ -82,6 +82,10 @@ builder.Services.AddScoped<IExchangeRateProvider, ExchangeRateApiProvider>();
 builder.Services.AddScoped<ICurrencyConversionService, CurrencyConversionService>();
 builder.Services.AddMemoryCache();
 
+// Configure Discord Notification Service
+builder.Services.AddHttpClient<DiscordNotificationService>();
+builder.Services.AddScoped<IDiscordNotificationService, DiscordNotificationService>();
+
 // Register background services for exchange rate updates and optimization
 builder.Services.AddHostedService<ExchangeRateBackgroundService>();
 builder.Services.AddHostedService<CurrencyOptimizationBackgroundService>();
@@ -114,7 +118,6 @@ using (var scope = app.Services.CreateScope())
     // context.Database.ExecuteSqlRaw(@"
     //     DROP DATABASE RecurApiDb;
     // ");
-    
     context.Database.Migrate();
 }
 

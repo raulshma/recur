@@ -26,8 +26,9 @@ public class DashboardControllerTests : IDisposable
 
         _context = new RecurDbContext(options);
         _currencyService = new MockCurrencyConversionService();
+        var discordService = new MockDiscordNotificationService();
         var logger = new Microsoft.Extensions.Logging.Abstractions.NullLogger<DashboardController>();
-        _controller = new DashboardController(_context, _currencyService, logger);
+        _controller = new DashboardController(_context, _currencyService, discordService, logger);
 
         // Setup user context
         var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
@@ -249,6 +250,41 @@ public class MockCurrencyConversionService : ICurrencyConversionService
     }
 
     public Task PreloadCurrencyPairsAsync(List<(string from, string to)> currencyPairs)
+    {
+        return Task.CompletedTask;
+    }
+}
+
+// Mock Discord notification service for testing
+public class MockDiscordNotificationService : IDiscordNotificationService
+{
+    public Task SendNotificationAsync(string webhookUrl, string title, string message, string? color = null)
+    {
+        // Mock implementation - just return completed task
+        return Task.CompletedTask;
+    }
+
+    public Task SendTrialEndingNotificationAsync(string webhookUrl, string subscriptionName, int daysRemaining)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendBillingReminderNotificationAsync(string webhookUrl, string subscriptionName, decimal amount, int daysRemaining)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendPriceChangeNotificationAsync(string webhookUrl, string subscriptionName, decimal oldPrice, decimal newPrice)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendRecommendationNotificationAsync(string webhookUrl, string message)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendBudgetAlertNotificationAsync(string webhookUrl, decimal currentSpending, decimal budgetLimit, string currency = "USD")
     {
         return Task.CompletedTask;
     }

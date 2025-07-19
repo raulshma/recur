@@ -192,7 +192,11 @@ const RegisterPage: React.FC = () => {
                       <FormLabel htmlFor={`${formId}-firstName`}>First Name</FormLabel>
                       <FormControl>
                         <Input 
-                          ref={firstNameInputRef}
+                          {...field}
+                          ref={(e) => {
+                            field.ref(e);
+                            firstNameInputRef.current = e;
+                          }}
                           id={`${formId}-firstName`}
                           placeholder="First name" 
                           className="sm:text-sm"
@@ -200,7 +204,6 @@ const RegisterPage: React.FC = () => {
                           aria-required="true"
                           aria-invalid={!!fieldState.error}
                           aria-describedby={fieldState.error ? firstNameErrorId : undefined}
-                          {...field} 
                         />
                       </FormControl>
                       <FormMessage id={firstNameErrorId} />

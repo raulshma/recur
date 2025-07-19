@@ -142,7 +142,11 @@ const LoginPage: React.FC = () => {
                     <FormLabel htmlFor={`${formId}-email`}>Email address</FormLabel>
                     <FormControl>
                       <Input 
-                        ref={emailInputRef}
+                        {...field}
+                        ref={(e) => {
+                          field.ref(e);
+                          emailInputRef.current = e;
+                        }}
                         id={`${formId}-email`}
                         placeholder="Enter your email" 
                         type="email"
@@ -151,7 +155,6 @@ const LoginPage: React.FC = () => {
                         aria-required="true"
                         aria-invalid={!!fieldState.error}
                         aria-describedby={fieldState.error ? emailErrorId : undefined}
-                        {...field} 
                       />
                     </FormControl>
                     <FormMessage id={emailErrorId} />

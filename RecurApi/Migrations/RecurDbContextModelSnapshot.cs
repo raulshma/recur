@@ -560,8 +560,11 @@ namespace RecurApi.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("EmailNotifications")
+                    b.Property<bool>("DiscordNotifications")
                         .HasColumnType("bit");
+
+                    b.Property<string>("DiscordWebhookUrl")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("PriceChangeAlerts")
                         .HasColumnType("bit");

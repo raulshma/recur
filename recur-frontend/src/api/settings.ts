@@ -1,7 +1,8 @@
 import { apiClient } from './client';
 
 export interface UserSettings {
-  emailNotifications: boolean;
+  discordNotifications: boolean;
+  discordWebhookUrl?: string;
   trialEndingAlerts: boolean;
   billingReminders: boolean;
   priceChangeAlerts: boolean;
@@ -32,7 +33,8 @@ export interface UpdateProfileRequest {
 }
 
 export interface UpdateUserSettingsRequest {
-  emailNotifications: boolean;
+  discordNotifications: boolean;
+  discordWebhookUrl?: string;
   trialEndingAlerts: boolean;
   billingReminders: boolean;
   priceChangeAlerts: boolean;
@@ -84,5 +86,10 @@ export const settingsApi = {
   async exportData(): Promise<Blob> {
     const response = await apiClient.get('/auth/export-data');
     return response.data as Blob;
+  },
+
+  async testDiscordNotification(webhookUrl: string): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>('/auth/test-discord', { webhookUrl });
+    return response.data;
   },
 };

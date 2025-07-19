@@ -1,6 +1,7 @@
 /**
  * Utility functions for accessibility testing and improvements
  */
+import React from 'react';
 
 /**
  * Announces a message to screen readers using an ARIA live region
@@ -47,7 +48,7 @@ export function announceToScreenReader(message: string, priority: 'polite' | 'as
  * @param text - The text content for screen readers
  * @returns JSX element visible only to screen readers
  */
-export function ScreenReaderOnly({ id, text }: { id?: string; text: string }): JSX.Element {
+export function ScreenReaderOnly({ id, text }: { id?: string; text: string }): React.JSX.Element {
   return (
     <span
       id={id}

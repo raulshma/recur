@@ -18,7 +18,8 @@ export const DEFAULT_CURRENCY_SETTINGS: Partial<UserSettings> = {
 export function mergeWithCurrencyDefaults(userSettings: Partial<UserSettings>): UserSettings {
   return {
     // Default notification settings
-    emailNotifications: true,
+    discordNotifications: false,
+    discordWebhookUrl: '',
     trialEndingAlerts: true,
     billingReminders: true,
     priceChangeAlerts: true,
