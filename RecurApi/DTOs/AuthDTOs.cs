@@ -41,6 +41,9 @@ public class RegisterDto
     
     [MaxLength(3)]
     public string Currency { get; set; } = "USD";
+    
+    [Required]
+    public string InviteToken { get; set; } = string.Empty;
 }
 
 public class AuthResponseDto
@@ -63,6 +66,7 @@ public class UserDto
     public decimal? BudgetLimit { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    public List<string> Roles { get; set; } = new List<string>();
 }
 
 public class ChangePasswordDto
@@ -150,4 +154,64 @@ public class UpdateUserSettingsDto
     
     [Range(0, 999999.99)]
     public decimal? BudgetLimit { get; set; }
+}
+
+// Admin DTOs
+public class CreateInviteDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+    
+    [Required]
+    public string Role { get; set; } = "User";
+    
+    public int ExpirationDays { get; set; } = 7;
+}
+
+public class InviteDto
+{
+    public int Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public bool IsUsed { get; set; }
+    public DateTime? UsedAt { get; set; }
+    public string? InvitedByName { get; set; }
+    public string? AcceptedByName { get; set; }
+}
+
+public class AdminUserDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string FullName => $"{FirstName} {LastName}".Trim();
+    public List<string> Roles { get; set; } = new List<string>();
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? LastLoginAt { get; set; }
+    public int SubscriptionCount { get; set; }
+}
+
+public class UpdateUserRoleDto
+{
+    [Required]
+    public string UserId { get; set; } = string.Empty;
+    
+    [Required]
+    public string Role { get; set; } = string.Empty;
+}
+
+public class AdminStatsDto
+{
+    public int TotalUsers { get; set; }
+    public int ActiveUsers { get; set; }
+    public int PendingInvites { get; set; }
+    public int TotalSubscriptions { get; set; }
+    public List<AdminUserDto> RecentUsers { get; set; } = new List<AdminUserDto>();
+    public List<InviteDto> RecentInvites { get; set; } = new List<InviteDto>();
 } 

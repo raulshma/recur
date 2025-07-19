@@ -1,5 +1,5 @@
-import React, { useState, useId, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useId, useRef, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { RegisterRequest } from '../types';
 import { useForm } from 'react-hook-form';
@@ -77,6 +77,9 @@ const registerFormSchema = z.object({
   currency: z
     .string()
     .min(1, { message: 'Currency is required' }),
+  inviteToken: z
+    .string()
+    .min(1, { message: 'Valid invitation required' }),
 })
 // Add password matching validation
 .refine((data) => data.password === data.confirmPassword, {
@@ -90,7 +93,12 @@ type RegisterFormValues = z.infer<typeof registerFormSchema>;
 const RegisterPage: React.FC = () => {
   const { register: registerUser, loading } = useAuth();
   const [authError, setAuthError] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  
+  // Get invite token from URL
+  const inviteToken = searchParams.get('token') || '';
+  const inviteEmail = searchParams.get('email') || '';
   
   // Redirect authenticated users away from registration page
   useAuthRedirect({ redirectAuthenticated: true });
@@ -111,10 +119,11 @@ const RegisterPage: React.FC = () => {
     defaultValues: {
       firstName: '',
       lastName: '',
-      email: '',
+      email: inviteEmail,
       password: '',
       confirmPassword: '',
       currency: 'USD',
+      inviteToken: inviteToken,
     },
   });
   
@@ -122,8 +131,16 @@ const RegisterPage: React.FC = () => {
   const authErrorRef = useRef<HTMLDivElement>(null);
   const formRef = useFocusTrap<HTMLFormElement>(true);
   
-  // Set initial focus on first name input
+  // Check if valid invite token is present
+  useEffect(() => {
+    if (!inviteToken) {
+      setAuthError('Valid invitation required. Please use the invitation link sent to your email.');
+    } else {
+      setAuthError(null);
+    }
+  }, [inviteToken]);
 
+  // Set initial focus on first name input
   const firstNameInputRef = useFocusManagement<HTMLInputElement>(true, []);
 
   // Handle form submission
@@ -139,6 +156,7 @@ const RegisterPage: React.FC = () => {
         password: values.password,
         confirmPassword: values.confirmPassword,
         currency: values.currency,
+        inviteToken: values.inviteToken,
       };
       
       await registerUser(registerData);
@@ -156,7 +174,7 @@ const RegisterPage: React.FC = () => {
       <Card className="w-full max-w-md mx-auto">
         <CardHeader className="p-2 pt-4">
           <AuthHeader 
-            title="Create your account"
+            title={inviteToken ? "Accept your invitation" : "Registration by invitation only"}
             subtitle="Or"
             linkText="sign in to your existing account"
             linkUrl="/login"

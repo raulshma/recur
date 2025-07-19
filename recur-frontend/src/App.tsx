@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
+import AdminPage from './pages/AdminPage';
 import Layout from './components/Layout';
 import { Toaster } from './components/ui/toaster';
 
@@ -114,6 +115,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <SettingsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <AdminPage />
             </Layout>
           </ProtectedRoute>
         }

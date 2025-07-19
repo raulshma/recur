@@ -13,6 +13,7 @@ export interface RegisterRequest {
   lastName: string;
   timeZone?: string;
   currency: string;
+  inviteToken: string;
 }
 
 export interface AuthResponse {
@@ -33,6 +34,7 @@ export interface User {
   createdAt: string;
   lastLoginAt?: string;
   budgetLimit?: number;
+  roles: string[];
 }
 
 // Subscription Types
@@ -179,5 +181,52 @@ export interface SubscriptionHistory {
   description: string;
   timestamp: string;
   details: Record<string, any>;
+}
+
+// Admin Types
+export interface CreateInviteRequest {
+  email: string;
+  role: string;
+  expirationDays: number;
+}
+
+export interface Invite {
+  id: number;
+  email: string;
+  token: string;
+  role: string;
+  createdAt: string;
+  expiresAt: string;
+  isUsed: boolean;
+  usedAt?: string;
+  invitedByName?: string;
+  acceptedByName?: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  fullName: string;
+  roles: string[];
+  isActive: boolean;
+  createdAt: string;
+  lastLoginAt?: string;
+  subscriptionCount: number;
+}
+
+export interface UpdateUserRoleRequest {
+  userId: string;
+  role: string;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  activeUsers: number;
+  pendingInvites: number;
+  totalSubscriptions: number;
+  recentUsers: AdminUser[];
+  recentInvites: Invite[];
 } 
 
