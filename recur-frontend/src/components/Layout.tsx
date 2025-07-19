@@ -264,9 +264,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-        <Card className="flex-1 border-r border-gray-200 bg-white">
+        <div className="flex-1 border-r border-gray-200 bg-white h-full shadow-sm">
           <SidebarContent />
-        </Card>
+        </div>
       </div>
 
       {/* Mobile Header */}

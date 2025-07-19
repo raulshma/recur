@@ -85,6 +85,9 @@ const SubscriptionsPage: React.FC = () => {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [subscriptionForHistory, setSubscriptionForHistory] = useState<Subscription | null>(null);
   
+  // Dropdown state management
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+  
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -425,7 +428,7 @@ const SubscriptionsPage: React.FC = () => {
       key: 'id' as keyof Subscription,
       header: 'Actions',
       render: (value: number, row: Subscription) => (
-        <DropdownMenu>
+        <DropdownMenu open={openDropdownId === row.id} onOpenChange={(open) => setOpenDropdownId(open ? row.id : null)}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm">
               <EllipsisHorizontalIcon className="h-4 w-4" />
@@ -434,6 +437,7 @@ const SubscriptionsPage: React.FC = () => {
           <DropdownMenuContent align="end">
             <DropdownMenuItem
               onClick={() => {
+                setOpenDropdownId(null);
                 setSubscriptionToView(row);
                 setViewDialogOpen(true);
               }}
@@ -443,6 +447,7 @@ const SubscriptionsPage: React.FC = () => {
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
+                setOpenDropdownId(null);
                 setSubscriptionToEdit(row);
                 setEditDialogOpen(true);
                 // Pre-populate edit form
@@ -470,6 +475,7 @@ const SubscriptionsPage: React.FC = () => {
               <DropdownMenuItem 
                 className="text-orange-600"
                 onClick={() => {
+                  setOpenDropdownId(null);
                   setSubscriptionToCancel(row);
                   setCancelConfirmOpen(true);
                 }}
@@ -481,6 +487,7 @@ const SubscriptionsPage: React.FC = () => {
               <DropdownMenuItem 
                 className="text-green-600"
                 onClick={() => {
+                  setOpenDropdownId(null);
                   setSubscriptionToReactivate(row);
                   setReactivateConfirmOpen(true);
                 }}
@@ -491,6 +498,7 @@ const SubscriptionsPage: React.FC = () => {
             )}
             <DropdownMenuItem
               onClick={() => {
+                setOpenDropdownId(null);
                 setSubscriptionForHistory(row);
                 setHistoryDialogOpen(true);
               }}
@@ -502,6 +510,7 @@ const SubscriptionsPage: React.FC = () => {
             <DropdownMenuItem 
               className="text-red-600"
               onClick={() => {
+                setOpenDropdownId(null);
                 setSubscriptionToDelete(row);
                 setDeleteConfirmOpen(true);
               }}
@@ -1020,15 +1029,16 @@ const SubscriptionsPage: React.FC = () => {
           setViewDialogOpen(open);
         }}
       >
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Subscription Details</DialogTitle>
             <DialogDescription>
               {subscriptionToView?.name}
             </DialogDescription>
           </DialogHeader>
 
-          {subscriptionToView && (
+          <div className="flex-1 overflow-y-auto">
+            {subscriptionToView && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Service Name</p>
@@ -1174,8 +1184,9 @@ const SubscriptionsPage: React.FC = () => {
               </div>
             </div>
           )}
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0">
             <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
               Close
             </Button>
