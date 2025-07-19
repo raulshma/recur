@@ -86,6 +86,9 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<DiscordNotificationService>();
 builder.Services.AddScoped<IDiscordNotificationService, DiscordNotificationService>();
 
+// Configure Subscription History Service
+builder.Services.AddScoped<ISubscriptionHistoryService, SubscriptionHistoryService>();
+
 // Register background services for exchange rate updates and optimization
 builder.Services.AddHostedService<ExchangeRateBackgroundService>();
 builder.Services.AddHostedService<CurrencyOptimizationBackgroundService>();

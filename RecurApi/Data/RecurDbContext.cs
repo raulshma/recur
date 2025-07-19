@@ -15,6 +15,7 @@ public class RecurDbContext : IdentityDbContext<User>
     public DbSet<Alert> Alerts { get; set; }
     public DbSet<UserSettings> UserSettings { get; set; }
     public DbSet<ExchangeRate> ExchangeRates { get; set; }
+    public DbSet<SubscriptionHistory> SubscriptionHistory { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -135,6 +136,32 @@ public class RecurDbContext : IdentityDbContext<User>
 
             // Configure DateTime properties with database defaults
             entity.Property(e => e.Timestamp)
+                  .HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        // Configure SubscriptionHistory properties
+        builder.Entity<SubscriptionHistory>(entity =>
+        {
+            entity.HasIndex(sh => new { sh.SubscriptionId, sh.Timestamp })
+                  .HasDatabaseName("IX_SubscriptionHistory_Subscription_Timestamp");
+
+            entity.HasIndex(sh => new { sh.UserId, sh.Timestamp })
+                  .HasDatabaseName("IX_SubscriptionHistory_User_Timestamp");
+
+            // Configure relationship with Subscription
+            entity.HasOne(sh => sh.Subscription)
+                  .WithMany(s => s.History)
+                  .HasForeignKey(sh => sh.SubscriptionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure relationship with User
+            entity.HasOne(sh => sh.User)
+                  .WithMany()
+                  .HasForeignKey(sh => sh.UserId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            // Configure DateTime properties with database defaults
+            entity.Property(sh => sh.Timestamp)
                   .HasDefaultValueSql("GETUTCDATE()");
         });
 
