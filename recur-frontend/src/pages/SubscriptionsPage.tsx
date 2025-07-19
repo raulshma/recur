@@ -312,7 +312,7 @@ const SubscriptionsPage: React.FC = () => {
         return (
           <div className="flex flex-col items-start">
             <Badge variant="destructive">Cancelled</Badge>
-            <span className="text-xs text-gray-500 mt-1">{daysCancelled} days ago</span>
+            <span className="text-xs text-gray-500 dark:text-gray-500 mt-1">{daysCancelled} days ago</span>
           </div>
         );
       }
@@ -328,7 +328,7 @@ const SubscriptionsPage: React.FC = () => {
           return (
             <div className="flex flex-col items-start">
               <Badge variant="warning">Trial Ending</Badge>
-              <span className="text-xs text-orange-600 mt-1">{daysUntilTrialEnd} days left</span>
+              <span className="text-xs text-orange-600 dark:text-orange-400 mt-1">{daysUntilTrialEnd} days left</span>
             </div>
           );
         }
@@ -355,13 +355,13 @@ const SubscriptionsPage: React.FC = () => {
       render: (value: string, row: Subscription) => (
         <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-              <TagIcon className="h-5 w-5 text-gray-600" />
+            <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+              <TagIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </div>
           </div>
           <div>
-            <div className="font-medium text-gray-900">{value}</div>
-            <div className="text-sm text-gray-500">{row.description}</div>
+            <div className="font-medium text-gray-900 dark:text-gray-100">{value}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-500">{row.description}</div>
           </div>
         </div>
       ),
@@ -392,7 +392,7 @@ const SubscriptionsPage: React.FC = () => {
               className="font-medium"
               showStaleIndicator={true}
             />
-            <div className="text-sm text-gray-500">{getBillingCycleText(row.billingCycle)}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-500">{getBillingCycleText(row.billingCycle)}</div>
           </div>
         );
       },
@@ -415,7 +415,7 @@ const SubscriptionsPage: React.FC = () => {
       render: (value: string) => (
         <div>
           <div className="font-medium">{new Date(value).toLocaleDateString()}</div>
-          <div className="text-sm text-gray-500">{getDaysUntilBilling(value)}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-500">{getDaysUntilBilling(value)}</div>
         </div>
       ),
     },
@@ -628,8 +628,8 @@ const SubscriptionsPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Subscriptions</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Subscriptions</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             Manage all your subscription services in one place.
           </p>
         </div>
@@ -882,10 +882,10 @@ const SubscriptionsPage: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Subscriptions</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Subscriptions</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.total}</p>
               </div>
-              <div className="text-gray-400">
+              <div className="text-gray-400 dark:text-gray-500">
                 <RectangleStackIcon className="h-8 w-8" />
               </div>
             </div>
@@ -895,7 +895,7 @@ const SubscriptionsPage: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Active</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active</p>
                 <p className="text-3xl font-bold text-green-600">{stats.active}</p>
               </div>
               <div className="text-green-400">
@@ -908,7 +908,7 @@ const SubscriptionsPage: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Trials</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Trials</p>
                 <p className="text-3xl font-bold text-orange-600">{stats.trial}</p>
               </div>
               <div className="text-orange-400">
@@ -921,7 +921,7 @@ const SubscriptionsPage: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Inactive</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Inactive</p>
                 <p className="text-3xl font-bold text-red-600">{stats.inactive}</p>
               </div>
               <div className="text-red-400">
@@ -938,7 +938,7 @@ const SubscriptionsPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-500" />
                 <Input
                   placeholder="Search subscriptions..."
                   value={searchTerm}
@@ -1041,12 +1041,12 @@ const SubscriptionsPage: React.FC = () => {
             {subscriptionToView && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Service Name</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Service Name</p>
                 <p className="font-medium">{subscriptionToView.name}</p>
               </div>
               
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Category</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Category</p>
                 <Badge
                   style={{
                     backgroundColor: subscriptionToView.category.color + '20',
@@ -1059,7 +1059,7 @@ const SubscriptionsPage: React.FC = () => {
               </div>
 
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Cost</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Cost</p>
                 <CurrencyDisplay
                   amount={subscriptionToView.cost}
                   currency={subscriptionToView.currency}
@@ -1082,105 +1082,99 @@ const SubscriptionsPage: React.FC = () => {
               </div>
 
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Billing Cycle</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Billing Cycle</p>
                 <p className="font-medium">{getBillingCycleText(subscriptionToView.billingCycle)}</p>
               </div>
 
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Next Billing Date</p>
-                <p className="font-medium">
-                  {new Date(subscriptionToView.nextBillingDate).toLocaleDateString()}
-                </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Next Billing Date</p>
+                <p className="font-medium">{new Date(subscriptionToView.nextBillingDate).toLocaleDateString()}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500">
                   {getDaysUntilBilling(subscriptionToView.nextBillingDate)}
                 </p>
               </div>
 
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Status</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Status</p>
                 {getStatusBadge(subscriptionToView)}
               </div>
 
               {subscriptionToView.isTrial && subscriptionToView.trialEndDate && (
-                <div className="sm:col-span-2">
-                  <p className="text-sm font-medium text-gray-600 mb-1">Trial End Date</p>
-                  <p className="font-medium text-orange-600">
-                    {new Date(subscriptionToView.trialEndDate).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {getDaysUntilBilling(subscriptionToView.trialEndDate)} until trial ends
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Trial End Date</p>
+                  <p className="font-medium">{new Date(subscriptionToView.trialEndDate).toLocaleDateString()}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    {getDaysUntilBilling(subscriptionToView.trialEndDate)}
                   </p>
                 </div>
               )}
 
               {!subscriptionToView.isActive && subscriptionToView.cancellationDate && (
-                <div className="sm:col-span-2">
-                  <p className="text-sm font-medium text-gray-600 mb-1">Cancellation Date</p>
-                  <p className="font-medium text-red-600">
-                    {new Date(subscriptionToView.cancellationDate).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Cancelled {Math.ceil((new Date().getTime() - new Date(subscriptionToView.cancellationDate).getTime()) / (1000 * 60 * 60 * 24))} days ago
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Cancellation Date</p>
+                  <p className="font-medium">{new Date(subscriptionToView.cancellationDate).toLocaleDateString()}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    {Math.ceil((new Date().getTime() - new Date(subscriptionToView.cancellationDate).getTime()) / (1000 * 60 * 60 * 24))} days ago
                   </p>
                 </div>
               )}
 
-              {subscriptionToView.website && (
-                <div className="sm:col-span-2">
-                  <p className="text-sm font-medium text-gray-600 mb-1">Website</p>
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Website</p>
+                {subscriptionToView.website ? (
                   <a
                     href={subscriptionToView.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                    className="text-blue-600 hover:text-blue-800 underline"
                   >
                     {subscriptionToView.website}
                   </a>
-                </div>
-              )}
+                ) : (
+                  <span className="text-gray-500 dark:text-gray-500">Not provided</span>
+                )}
+              </div>
 
-              {subscriptionToView.contactEmail && (
-                <div className="sm:col-span-2">
-                  <p className="text-sm font-medium text-gray-600 mb-1">Contact Email</p>
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Contact Email</p>
+                {subscriptionToView.contactEmail ? (
                   <a
                     href={`mailto:${subscriptionToView.contactEmail}`}
-                    className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                    className="text-blue-600 hover:text-blue-800 underline"
                   >
                     {subscriptionToView.contactEmail}
                   </a>
-                </div>
-              )}
+                ) : (
+                  <span className="text-gray-500 dark:text-gray-500">Not provided</span>
+                )}
+              </div>
 
               {subscriptionToView.description && (
-                <div className="sm:col-span-2">
-                  <p className="text-sm font-medium text-gray-600 mb-1">Description</p>
-                  <p className="text-gray-900">{subscriptionToView.description}</p>
+                <div className="col-span-1 sm:col-span-2">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Description</p>
+                  <p className="text-gray-900 dark:text-gray-100">{subscriptionToView.description}</p>
                 </div>
               )}
 
               {subscriptionToView.notes && (
-                <div className="sm:col-span-2">
-                  <p className="text-sm font-medium text-gray-600 mb-1">Notes</p>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg border">{subscriptionToView.notes}</p>
+                <div className="col-span-1 sm:col-span-2">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Notes</p>
+                  <p className="text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border">{subscriptionToView.notes}</p>
                 </div>
               )}
 
-              <div className="border-t pt-4 sm:col-span-2">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">Created</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(subscriptionToView.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Created</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500">
+                  {new Date(subscriptionToView.createdAt).toLocaleDateString()}
+                </p>
+              </div>
 
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">Last Updated</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(subscriptionToView.updatedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Last Updated</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500">
+                  {new Date(subscriptionToView.updatedAt).toLocaleDateString()}
+                </p>
               </div>
             </div>
           )}
@@ -1575,7 +1569,7 @@ const SubscriptionHistoryView: React.FC<{ subscriptionId?: number }> = ({ subscr
       case 'trial_ended':
         return <ClockIcon className="h-4 w-4 text-orange-600" />;
       default:
-        return <TagIcon className="h-4 w-4 text-gray-600" />;
+        return <TagIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
     }
   };
 
@@ -1614,7 +1608,7 @@ const SubscriptionHistoryView: React.FC<{ subscriptionId?: number }> = ({ subscr
 
   if (history.length === 0) {
     return (
-      <div className="text-center p-8 text-gray-500">
+      <div className="text-center p-8 text-gray-500 dark:text-gray-500">
         No history events found for this subscription.
       </div>
     );
@@ -1627,32 +1621,32 @@ const SubscriptionHistoryView: React.FC<{ subscriptionId?: number }> = ({ subscr
           <div key={event.id} className="relative">
             {/* Timeline line */}
             {index < history.length - 1 && (
-              <div className="absolute left-6 top-12 w-0.5 h-8 bg-gray-200"></div>
+              <div className="absolute left-6 top-12 w-0.5 h-8 bg-gray-200 dark:bg-gray-600"></div>
             )}
             
             <div className={`flex items-start space-x-4 p-4 rounded-lg border ${getHistoryColor(event.type)}`}>
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white border-2 border-current flex items-center justify-center">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white dark:bg-gray-800 border-2 border-current flex items-center justify-center">
                 {getHistoryIcon(event.type)}
               </div>
               
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-900">{event.title}</h4>
-                  <span className="text-sm text-gray-500">
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100">{event.title}</h4>
+                  <span className="text-sm text-gray-500 dark:text-gray-500">
                     {new Date(event.timestamp).toLocaleDateString()} at{' '}
                     {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
                 
-                <p className="text-gray-600 mt-1">{event.description}</p>
+                <p className="text-gray-600 dark:text-gray-300 mt-1">{event.description}</p>
                 
                 {Object.keys(event.details).length > 0 && (
-                  <div className="mt-3 p-3 bg-white rounded border">
+                  <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded border">
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {Object.entries(event.details).map(([key, value]) => (
                         <div key={key}>
-                          <span className="font-medium text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span>
-                          <span className="ml-2 text-gray-900">{String(value)}</span>
+                          <span className="font-medium text-gray-600 dark:text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span>
+                          <span className="ml-2 text-gray-900 dark:text-gray-100">{String(value)}</span>
                         </div>
                       ))}
                     </div>

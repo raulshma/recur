@@ -402,7 +402,7 @@ const SettingsPage: React.FC = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading settings...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading settings...</p>
           </div>
         </div>
       </div>
@@ -414,8 +414,8 @@ const SettingsPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             Manage your account settings and preferences.
           </p>
         </div>
@@ -641,11 +641,11 @@ const SettingsPage: React.FC = () => {
             <CardContent className="space-y-6">
               {userSettings && (
                 <>
-                  <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                  <div className="space-y-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Discord Notifications</Label>
-                        <p className="text-sm text-gray-600">Receive notifications via Discord webhook</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Receive notifications via Discord webhook</p>
                       </div>
                       <Switch
                         checked={userSettings.discordNotifications}
@@ -743,8 +743,8 @@ const SettingsPage: React.FC = () => {
                           )}
                         </div>
 
-                        <details className="text-xs text-gray-500">
-                          <summary className="cursor-pointer hover:text-gray-700">How to create a Discord webhook</summary>
+                                      <details className="text-xs text-gray-500 dark:text-gray-500">
+                <summary className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-300">How to create a Discord webhook</summary>
                           <div className="mt-2 space-y-1 pl-4">
                             <p>1. Go to your Discord server settings</p>
                             <p>2. Navigate to Integrations → Webhooks</p>
@@ -763,7 +763,7 @@ const SettingsPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Trial Ending Alerts</Label>
-                      <p className="text-sm text-gray-600">Get notified when trials are ending</p>
+                                              <p className="text-sm text-gray-600 dark:text-gray-400">Get notified when trials are ending</p>
                     </div>
                     <Switch
                       checked={userSettings.trialEndingAlerts}
@@ -774,7 +774,7 @@ const SettingsPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Billing Reminders</Label>
-                      <p className="text-sm text-gray-600">Reminders before subscription renewals</p>
+                                              <p className="text-sm text-gray-600 dark:text-gray-400">Reminders before subscription renewals</p>
                     </div>
                     <Switch
                       checked={userSettings.billingReminders}
@@ -785,7 +785,7 @@ const SettingsPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Price Change Alerts</Label>
-                      <p className="text-sm text-gray-600">Get notified about subscription price changes</p>
+                                              <p className="text-sm text-gray-600 dark:text-gray-400">Get notified about subscription price changes</p>
                     </div>
                     <Switch
                       checked={userSettings.priceChangeAlerts}
@@ -796,7 +796,7 @@ const SettingsPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Recommendation Alerts</Label>
-                      <p className="text-sm text-gray-600">Receive cost-saving recommendations</p>
+                                              <p className="text-sm text-gray-600 dark:text-gray-400">Receive cost-saving recommendations</p>
                     </div>
                     <Switch
                       checked={userSettings.recommendationAlerts}
@@ -894,7 +894,7 @@ const SettingsPage: React.FC = () => {
                         value={userSettings.budgetLimit || ''}
                         onChange={(e) => handleNotificationChange('budgetLimit', e.target.value ? parseFloat(e.target.value) : 0)}
                       />
-                      <p className="text-sm text-gray-600">Set a monthly spending limit for alerts</p>
+                                              <p className="text-sm text-gray-600 dark:text-gray-400">Set a monthly spending limit for alerts</p>
                     </div>
                   </div>
                 </>
@@ -1008,7 +1008,7 @@ const SettingsPage: React.FC = () => {
               <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                 <div>
                   <h4 className="font-medium">Export All Data</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     Download all your subscription data as JSON
                   </p>
                 </div>
@@ -1020,9 +1020,9 @@ const SettingsPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-red-200">
+          <Card className="border-red-200 dark:border-red-800">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-600">
+              <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
                 <ExclamationTriangleIcon className="h-5 w-5" />
                 Danger Zone
               </CardTitle>
@@ -1031,10 +1031,10 @@ const SettingsPage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
+              <div className="flex items-center justify-between p-4 border border-red-200 dark:border-red-700 rounded-lg bg-red-50 dark:bg-red-900/20">
                 <div>
-                  <h4 className="font-medium text-red-900">Delete Account</h4>
-                  <p className="text-sm text-red-700">
+                  <h4 className="font-medium text-red-900 dark:text-red-100">Delete Account</h4>
+                  <p className="text-sm text-red-700 dark:text-red-300">
                     Permanently delete your account and all data. This cannot be undone.
                   </p>
                 </div>

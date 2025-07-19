@@ -423,7 +423,7 @@ const RegisterPage: React.FC = () => {
               </Button>
               
               <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Already have an account?{' '}
                   <Link 
                     to="/login" 

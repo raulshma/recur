@@ -51,7 +51,7 @@ export function TagInput({ tags, onTagsChange, placeholder = "Add tags...", maxT
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 p-3 border-2 border-black rounded-lg bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus-within:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all",
+        "flex flex-wrap items-center gap-2 p-3 border-2 border-black rounded-lg bg-white dark:bg-gray-800 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus-within:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all",
         className,
       )}
       onClick={() => inputRef.current?.focus()}
