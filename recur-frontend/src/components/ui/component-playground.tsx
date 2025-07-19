@@ -241,7 +241,7 @@ export function ComponentPlayground({ examples = defaultExamples, className }: C
                       Copy
                     </Button>
                   </div>
-                  <div className="bg-gray-900 text-gray-100 p-4 rounded-md border-2 border-black overflow-x-auto">
+                  <div className="bg-gray-900 dark:bg-gray-950 text-gray-100 dark:text-gray-200 p-4 rounded-md border-2 border-black overflow-x-auto">
                     <pre className="text-sm">
                       <code>{selectedExampleData?.code}</code>
                     </pre>
@@ -253,10 +253,10 @@ export function ComponentPlayground({ examples = defaultExamples, className }: C
                     <h4 className="font-medium">Preview</h4>
                     <div className="flex items-center space-x-2">
                       <Palette className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-500">Interactive</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Interactive</span>
                     </div>
                   </div>
-                  <div className="min-h-[200px] flex items-center justify-center p-8 bg-gray-50 rounded-md border-2 border-dashed border-gray-300">
+                  <div className="min-h-[200px] flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-800 rounded-md border-2 border-dashed border-gray-300 dark:border-gray-600">
                     {selectedExampleData?.component}
                   </div>
                 </div>

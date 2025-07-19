@@ -17,11 +17,11 @@ const currencyDisplayVariants = cva(
         xl: "text-xl",
       },
       variant: {
-        default: "text-gray-900",
-        muted: "text-gray-600",
-        success: "text-green-700",
-        warning: "text-orange-700",
-        destructive: "text-red-700",
+        default: "text-gray-900 dark:text-gray-100",
+        muted: "text-gray-600 dark:text-gray-400",
+        success: "text-green-700 dark:text-green-400",
+        warning: "text-orange-700 dark:text-orange-400",
+        destructive: "text-red-700 dark:text-red-400",
       },
     },
     defaultVariants: {

@@ -46,7 +46,7 @@ export function Timeline({ items, className }: TimelineProps) {
         <div key={item.id} className="relative flex items-start space-x-4">
           {/* Timeline line */}
           {index < items.length - 1 && (
-            <div className="absolute left-4 top-8 w-0.5 h-full bg-gray-300 -translate-x-1/2" />
+            <div className="absolute left-4 top-8 w-0.5 h-full bg-gray-300 dark:bg-gray-600 -translate-x-1/2" />
           )}
 
           {/* Timeline dot */}
@@ -62,10 +62,10 @@ export function Timeline({ items, className }: TimelineProps) {
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-gray-900">{item.title}</h3>
-              <time className="text-sm text-gray-500 font-medium">{formatTimestamp(item.timestamp)}</time>
+              <h3 className="font-bold text-gray-900 dark:text-gray-100">{item.title}</h3>
+              <time className="text-sm text-gray-500 dark:text-gray-400 font-medium">{formatTimestamp(item.timestamp)}</time>
             </div>
-            {item.description && <p className="text-sm text-gray-600 mt-1">{item.description}</p>}
+            {item.description && <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{item.description}</p>}
           </div>
         </div>
       ))}
