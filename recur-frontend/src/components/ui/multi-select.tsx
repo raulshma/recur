@@ -53,7 +53,7 @@ export function MultiSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between bg-white", className)}
+          className={cn("w-full justify-between bg-white dark:bg-gray-800", className)}
           disabled={disabled}
         >
           <div className="flex flex-wrap gap-1 flex-1">
@@ -69,11 +69,11 @@ export function MultiSelect({
                   }}
                 >
                   {option.label}
-                  <X className="ml-1 h-3 w-3 hover:bg-gray-300 rounded-full" />
+                  <X className="ml-1 h-3 w-3 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full" />
                 </Badge>
               ))
             ) : (
-              <span className="text-gray-500">{placeholder}</span>
+              <span className="text-gray-500 dark:text-gray-400">{placeholder}</span>
             )}
           </div>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />

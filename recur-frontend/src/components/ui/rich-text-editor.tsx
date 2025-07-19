@@ -34,9 +34,9 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writing..
   }, [value])
 
   return (
-    <div className={cn("border-2 border-black rounded-lg bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]", className)}>
-      {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 border-b-2 border-black bg-gray-50">
+          <div className={cn("border-2 border-black rounded-lg bg-white dark:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]", className)}>
+        {/* Toolbar */}
+        <div className="flex items-center gap-1 p-2 border-b-2 border-black bg-gray-50 dark:bg-gray-700">
         <Button variant="ghost" size="sm" onClick={() => handleCommand("bold")} className="h-8 w-8 p-0">
           <Bold className="h-4 w-4" />
         </Button>
@@ -46,7 +46,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writing..
         <Button variant="ghost" size="sm" onClick={() => handleCommand("underline")} className="h-8 w-8 p-0">
           <Underline className="h-4 w-4" />
         </Button>
-        <div className="w-px h-6 bg-gray-300 mx-1" />
+                  <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
         <Button variant="ghost" size="sm" onClick={() => handleCommand("insertUnorderedList")} className="h-8 w-8 p-0">
           <List className="h-4 w-4" />
         </Button>
@@ -87,7 +87,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writing..
         className={cn(
           "min-h-[200px] p-4 focus:outline-none",
           "prose prose-sm max-w-none",
-          !value && !isFocused && "text-gray-400",
+                      !value && !isFocused && "text-gray-400 dark:text-gray-500",
         )}
         data-placeholder={placeholder}
         style={{}}

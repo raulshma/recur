@@ -27,7 +27,7 @@ export function MetricCard({ title, value, change, trend, sparklineData, icon, c
       case "down":
         return <TrendingDown className="h-4 w-4 text-red-600" />
       default:
-        return <Activity className="h-4 w-4 text-gray-600" />
+        return <Activity className="h-4 w-4 text-gray-600 dark:text-gray-400" />
     }
   }
 
@@ -38,15 +38,15 @@ export function MetricCard({ title, value, change, trend, sparklineData, icon, c
       case "down":
         return "text-red-600"
       default:
-        return "text-gray-600"
+        return "text-gray-600 dark:text-gray-400"
     }
   }
 
   return (
     <Card className={cn("", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-gray-600">{title}</CardTitle>
-        {icon && <div className="text-gray-400">{icon}</div>}
+        <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</CardTitle>
+        {icon && <div className="text-gray-400 dark:text-gray-500">{icon}</div>}
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">

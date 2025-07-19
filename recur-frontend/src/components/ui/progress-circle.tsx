@@ -53,7 +53,7 @@ export function ProgressCircle({
       </svg>
       {showValue && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-bold text-gray-900">{Math.round(value)}%</span>
+          <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{Math.round(value)}%</span>
         </div>
       )}
     </div>

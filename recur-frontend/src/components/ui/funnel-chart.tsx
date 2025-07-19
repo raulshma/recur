@@ -30,7 +30,7 @@ export const FunnelChart = React.forwardRef<HTMLDivElement, FunnelChartProps>(
       <div
         ref={ref}
         className={cn(
-          "w-full rounded-md border-2 border-black bg-white p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+          "w-full rounded-md border-2 border-black bg-white dark:bg-gray-800 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
           className,
         )}
         style={{ height }}

@@ -19,7 +19,7 @@ export function LoadingState({ loading, children, fallback, className }: Loading
         {fallback || (
           <div className="flex items-center space-x-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-gray-600">Loading...</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">Loading...</span>
           </div>
         )}
       </div>
