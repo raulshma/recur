@@ -606,7 +606,7 @@ const AnalyticsPage: React.FC = () => {
                       <p className="text-2xl font-bold text-blue-600">
                         {spendingPatterns.mostActiveDay}th
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         Most renewals happen on this day
                       </p>
                     </div>
@@ -617,7 +617,7 @@ const AnalyticsPage: React.FC = () => {
                         {spendingPatterns.averageServiceLifeMonths.toFixed(1)}{" "}
                         months
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         How long you keep subscriptions
                       </p>
                     </div>
@@ -627,7 +627,7 @@ const AnalyticsPage: React.FC = () => {
                       <p className="text-2xl font-bold text-orange-600">
                         {spendingPatterns.cancellationRate.toFixed(1)}%
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         Services canceled within 3 months
                       </p>
                     </div>
@@ -637,7 +637,7 @@ const AnalyticsPage: React.FC = () => {
                       <p className="text-2xl font-bold text-purple-600">
                         {spendingPatterns.peakSpendingMonth}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         When you spend the most
                       </p>
                     </div>

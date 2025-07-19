@@ -44,7 +44,7 @@ export function CodeEditor({
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-gray-600">{language}</span>
         {showCopyButton && (
-          <Button variant="outline" size="sm" onClick={handleCopy} className="h-8 px-2 bg-white">
+                      <Button variant="outline" size="sm" onClick={handleCopy} className="h-8 px-2 bg-white dark:bg-gray-800">
             {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
           </Button>
         )}

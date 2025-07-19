@@ -199,7 +199,7 @@ export function DashboardBuilder({
               <CardTitle>{widget.title}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-500">
                 <Grid className="h-12 w-12 mx-auto mb-4" />
                 <p>Table widget placeholder</p>
               </div>
@@ -211,7 +211,7 @@ export function DashboardBuilder({
           <Card {...commonProps}>
             <CardContent className="p-6">
               <h3 className="font-bold text-lg mb-2">{widget.title}</h3>
-              <p className="text-gray-600">{widget.config.content || "Add your custom content here..."}</p>
+              <p className="text-gray-600 dark:text-gray-400">{widget.config.content || "Add your custom content here..."}</p>
             </CardContent>
           </Card>
         )
@@ -234,7 +234,7 @@ export function DashboardBuilder({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Dashboard Builder</h2>
-          <p className="text-gray-600">Create and customize your dashboard</p>
+          <p className="text-gray-600 dark:text-gray-400">Create and customize your dashboard</p>
         </div>
         <div className="flex space-x-2">
           <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
@@ -361,7 +361,7 @@ export function DashboardBuilder({
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 bg-white shadow-md">
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 bg-white dark:bg-gray-800 shadow-md">
                               <Settings className="h-3 w-3" />
                             </Button>
                           </DropdownMenuTrigger>

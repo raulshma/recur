@@ -63,7 +63,7 @@ export function ColorPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className={cn("w-full justify-start bg-white", className)} disabled={disabled}>
+        <Button variant="outline" className={cn("w-full justify-start bg-white dark:bg-gray-800", className)} disabled={disabled}>
           <div className="flex items-center space-x-2">
             <div
               className="h-4 w-4 rounded border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
