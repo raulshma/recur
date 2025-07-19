@@ -168,6 +168,71 @@ public class AuthController : ControllerBase
         });
     }
 
+    [HttpPost("request-invite")]
+    public async Task<ActionResult<AuthResponseDto>> RequestInvite(CreateInviteRequestDto model)
+    {
+        // Check if user already exists
+        if (await _userManager.FindByEmailAsync(model.Email) != null)
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "An account with this email already exists"
+            });
+        }
+
+        // Check if there's already a pending invite for this email
+        var existingInvite = await _context.Invites
+            .FirstOrDefaultAsync(i => i.Email == model.Email && !i.IsUsed && i.ExpiresAt > DateTime.UtcNow);
+
+        if (existingInvite != null)
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "There's already a pending invitation for this email"
+            });
+        }
+
+        // Check if there's already a pending invite request for this email
+        var existingRequest = await _context.InviteRequests
+            .FirstOrDefaultAsync(ir => ir.Email == model.Email && ir.Status == InviteRequestStatus.Pending);
+
+        if (existingRequest != null)
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "There's already a pending invitation request for this email"
+            });
+        }
+
+        var inviteRequest = new InviteRequest
+        {
+            Email = model.Email,
+            FirstName = model.FirstName,
+            LastName = model.LastName,
+            Message = model.Message,
+            Status = InviteRequestStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.InviteRequests.Add(inviteRequest);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Invite request created for {Email} by {FirstName} {LastName}", 
+            model.Email, model.FirstName, model.LastName);
+
+        // TODO: Send notification to admins about new invite request
+        // This could be implemented with Discord notifications or email alerts
+
+        return Ok(new AuthResponseDto
+        {
+            Success = true,
+            Message = "Your invitation request has been submitted and is pending review by an administrator"
+        });
+    }
+
     [HttpPost("change-password")]
     [Authorize]
     public async Task<ActionResult<AuthResponseDto>> ChangePassword(ChangePasswordDto model)

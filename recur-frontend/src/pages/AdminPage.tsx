@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { adminApi } from '../api/admin';
-import type { AdminStats, AdminUser, Invite, CreateInviteRequest } from '../types';
+import type { AdminStats, AdminUser, Invite, InviteRequest, CreateInviteRequest } from '../types';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -21,9 +21,11 @@ const AdminPage: React.FC = () => {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
+  const [inviteRequests, setInviteRequests] = useState<InviteRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showUsedInvites, setShowUsedInvites] = useState(false);
+  const [selectedInviteRequestStatus, setSelectedInviteRequestStatus] = useState<string>('pending');
 
   // Form states
   const [inviteForm, setInviteForm] = useState<CreateInviteRequest>({
@@ -43,20 +45,22 @@ const AdminPage: React.FC = () => {
   // Load initial data
   useEffect(() => {
     loadData();
-  }, []);
+  }, [showUsedInvites, selectedInviteRequestStatus]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [statsData, usersData, invitesData] = await Promise.all([
+      const [statsData, usersData, invitesData, inviteRequestsData] = await Promise.all([
         adminApi.getStats(),
         adminApi.getUsers({ limit: 50 }),
-        adminApi.getInvites({ includeUsed: showUsedInvites })
+        adminApi.getInvites({ includeUsed: showUsedInvites }),
+        adminApi.getInviteRequests({ status: selectedInviteRequestStatus === 'all' ? undefined : selectedInviteRequestStatus })
       ]);
       
       setStats(statsData);
       setUsers(usersData);
       setInvites(invitesData);
+      setInviteRequests(inviteRequestsData);
     } catch (error) {
       console.error('Failed to load admin data:', error);
       toast({
@@ -182,6 +186,30 @@ const AdminPage: React.FC = () => {
     });
   };
 
+  const handleReviewInviteRequest = async (requestId: number, approve: boolean) => {
+    try {
+      await adminApi.reviewInviteRequest(requestId, {
+        approve,
+        role: 'User',
+        expirationDays: 7,
+        reviewNotes: approve ? 'Approved from admin panel' : 'Rejected from admin panel'
+      });
+      
+      toast({
+        title: 'Success',
+        description: `Invitation request ${approve ? 'approved' : 'rejected'} successfully`
+      });
+      
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || `Failed to ${approve ? 'approve' : 'reject'} invitation request`,
+        variant: 'destructive'
+      });
+    }
+  };
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'Admin': return 'destructive';
@@ -260,6 +288,18 @@ const AdminPage: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
+                  <p className="text-sm font-medium text-muted-foreground">Pending Requests</p>
+                  <p className="text-2xl font-bold">{stats.pendingInviteRequests}</p>
+                </div>
+                <UserPlus className="h-8 w-8 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Subscriptions</p>
                   <p className="text-2xl font-bold">{stats.totalSubscriptions}</p>
                 </div>
@@ -274,6 +314,7 @@ const AdminPage: React.FC = () => {
         <TabsList>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="invites">Invitations</TabsTrigger>
+          <TabsTrigger value="requests">Invite Requests</TabsTrigger>
         </TabsList>
 
         {/* Users Tab */}
@@ -494,6 +535,82 @@ const AdminPage: React.FC = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Invite Requests Tab */}
+        <TabsContent value="requests">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Invitation Requests</CardTitle>
+                <p className="text-sm text-muted-foreground">Review user invitation requests</p>
+              </div>
+              <Select value={selectedInviteRequestStatus} onValueChange={setSelectedInviteRequestStatus}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="all">All Requests</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {inviteRequests.map((request) => (
+                  <div key={request.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-sm font-medium">{request.firstName} {request.lastName}</h3>
+                          <Badge variant={request.status === 'Pending' ? 'default' : request.status === 'Approved' ? 'secondary' : 'destructive'}>
+                            {request.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{request.email}</p>
+                        {request.message && (
+                          <p className="text-sm text-muted-foreground mt-2 italic">"{request.message}"</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Requested {new Date(request.createdAt).toLocaleDateString()}
+                        </p>
+                        {request.reviewedAt && (
+                          <p className="text-xs text-muted-foreground">
+                            Reviewed by {request.reviewedByName || 'Unknown'} on {new Date(request.reviewedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      {request.status === 'Pending' && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleReviewInviteRequest(request.id, true)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleReviewInviteRequest(request.id, false)}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {inviteRequests.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No invitation requests found</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -1,13 +1,15 @@
 import React, { useState, useId, useRef, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import type { RegisterRequest } from '../types';
+import type { RegisterRequest, CreateInviteRequestByUser } from '../types';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthLayout } from '../components/auth';
 import AuthHeader from '../components/auth/AuthHeader';
 import FormError from '../components/auth/FormError';
+import InviteRequestForm from '../components/auth/InviteRequestForm';
+import { authApi } from '../api/auth';
 import {
   Form,
   FormControl,
@@ -93,6 +95,9 @@ type RegisterFormValues = z.infer<typeof registerFormSchema>;
 const RegisterPage: React.FC = () => {
   const { register: registerUser, loading } = useAuth();
   const [authError, setAuthError] = useState<string | null>(null);
+  const [inviteRequestSubmitted, setInviteRequestSubmitted] = useState(false);
+  const [inviteRequestLoading, setInviteRequestLoading] = useState(false);
+  const [inviteRequestError, setInviteRequestError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
@@ -134,7 +139,7 @@ const RegisterPage: React.FC = () => {
   // Check if valid invite token is present
   useEffect(() => {
     if (!inviteToken) {
-      setAuthError('Valid invitation required. Please use the invitation link sent to your email.');
+      setAuthError(null); // Clear error since we'll show invite request form instead
     } else {
       setAuthError(null);
     }
@@ -143,7 +148,7 @@ const RegisterPage: React.FC = () => {
   // Set initial focus on first name input
   const firstNameInputRef = useFocusManagement<HTMLInputElement>(true, []);
 
-  // Handle form submission
+  // Handle registration form submission
   const onSubmit = async (values: RegisterFormValues) => {
     setAuthError(null);
     
@@ -169,12 +174,40 @@ const RegisterPage: React.FC = () => {
     }
   };
 
+  // Handle invitation request submission
+  const handleInviteRequest = async (data: CreateInviteRequestByUser) => {
+    setInviteRequestLoading(true);
+    setInviteRequestError(null);
+    
+    try {
+      await authApi.requestInvite(data);
+      setInviteRequestSubmitted(true);
+    } catch (err: any) {
+      setInviteRequestError(err.message || 'Failed to submit invitation request');
+      throw err; // Re-throw to let the component handle it
+    } finally {
+      setInviteRequestLoading(false);
+    }
+  };
+
+  // If no invite token, show invitation request form
+  if (!inviteToken) {
+    return (
+      <InviteRequestForm 
+        onSubmit={handleInviteRequest}
+        loading={inviteRequestLoading}
+        error={inviteRequestError}
+        onSuccess={inviteRequestSubmitted}
+      />
+    );
+  }
+
   return (
     <AuthLayout>
       <Card className="w-full max-w-md mx-auto">
         <CardHeader className="p-2 pt-4">
           <AuthHeader 
-            title={inviteToken ? "Accept your invitation" : "Registration by invitation only"}
+            title="Accept your invitation"
             subtitle="Or"
             linkText="sign in to your existing account"
             linkUrl="/login"
