@@ -44,7 +44,7 @@ import * as z from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptionsApi } from '../api/subscriptions';
 import { categoriesApi } from '../api/categories';
-import type { Subscription, CreateSubscriptionRequest, BillingCycle } from '../types';
+import type { Subscription, CreateSubscriptionRequest, UpdateSubscriptionRequest, BillingCycle } from '../types';
 import { SUPPORTED_CURRENCIES } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
@@ -61,6 +61,15 @@ const SubscriptionsPage: React.FC = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<Subscription | null>(null);
+  
+  // View Details state
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [subscriptionToView, setSubscriptionToView] = useState<Subscription | null>(null);
+  
+  // Edit state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [subscriptionToEdit, setSubscriptionToEdit] = useState<Subscription | null>(null);
+  
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -122,6 +131,31 @@ const SubscriptionsPage: React.FC = () => {
     },
   });
 
+  // Update subscription mutation
+  const updateSubscriptionMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateSubscriptionRequest }) =>
+      subscriptionsApi.updateSubscription(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      setEditDialogOpen(false);
+      setSubscriptionToEdit(null);
+      editForm.reset();
+      toast({
+        title: "Success",
+        description: "Subscription updated successfully!",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating subscription:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update subscription. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Form validation schema
   const formSchema = z.object({
     name: z.string().min(1, 'Service name is required').max(200, 'Name too long'),
@@ -136,6 +170,22 @@ const SubscriptionsPage: React.FC = () => {
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      cost: '',
+      billingCycle: '',
+      nextBillingDate: '',
+      categoryId: '',
+      description: '',
+      website: '',
+      currency: userCurrency,
+      isTrial: false,
+    },
+  });
+
+  // Separate form instance for editing
+  const editForm = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
@@ -260,7 +310,7 @@ const SubscriptionsPage: React.FC = () => {
     {
       key: 'id' as keyof Subscription,
       header: 'Actions',
-      render: (value: number, _row: Subscription) => (
+      render: (value: number, row: Subscription) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm">
@@ -268,11 +318,33 @@ const SubscriptionsPage: React.FC = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setSubscriptionToView(row);
+                setViewDialogOpen(true);
+              }}
+            >
               <EyeIcon className="h-4 w-4 mr-2" />
               View Details
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setSubscriptionToEdit(row);
+                setEditDialogOpen(true);
+                // Pre-populate edit form
+                editForm.reset({
+                  name: row.name,
+                  cost: row.cost.toString(),
+                  billingCycle: row.billingCycle.toString(),
+                  nextBillingDate: row.nextBillingDate.slice(0, 10), // yyyy-mm-dd format
+                  categoryId: row.category.id.toString(),
+                  description: row.description ?? '',
+                  website: row.website ?? '',
+                  currency: row.currency,
+                  isTrial: row.isTrial,
+                });
+              }}
+            >
               <PencilIcon className="h-4 w-4 mr-2" />
               Edit
             </DropdownMenuItem>
@@ -280,7 +352,7 @@ const SubscriptionsPage: React.FC = () => {
             <DropdownMenuItem 
               className="text-red-600"
               onClick={() => {
-                setSubscriptionToDelete(value);
+                setSubscriptionToDelete(row);
                 setDeleteConfirmOpen(true);
               }}
             >
@@ -676,6 +748,345 @@ const SubscriptionsPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* View Details Dialog */}
+      <Dialog 
+        open={viewDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) setSubscriptionToView(null);
+          setViewDialogOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Subscription Details</DialogTitle>
+            <DialogDescription>
+              {subscriptionToView?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          {subscriptionToView && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Service Name</p>
+                <p className="font-medium">{subscriptionToView.name}</p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Category</p>
+                <Badge
+                  style={{
+                    backgroundColor: subscriptionToView.category.color + '20',
+                    color: subscriptionToView.category.color,
+                    borderColor: subscriptionToView.category.color
+                  }}
+                >
+                  {subscriptionToView.category.name}
+                </Badge>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Cost</p>
+                <CurrencyDisplay
+                  amount={subscriptionToView.cost}
+                  currency={subscriptionToView.currency}
+                  convertedAmount={
+                    subscriptionToView.isConverted && subscriptionToView.convertedCost && subscriptionToView.convertedCurrency && subscriptionToView.exchangeRate && subscriptionToView.rateTimestamp
+                      ? {
+                          originalAmount: subscriptionToView.cost,
+                          originalCurrency: subscriptionToView.currency,
+                          convertedAmount: subscriptionToView.convertedCost,
+                          convertedCurrency: subscriptionToView.convertedCurrency,
+                          exchangeRate: subscriptionToView.exchangeRate,
+                          isStale: subscriptionToView.isRateStale,
+                          timestamp: new Date(subscriptionToView.rateTimestamp),
+                        }
+                      : undefined
+                  }
+                  showStaleIndicator
+                  className="font-medium"
+                />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Billing Cycle</p>
+                <p className="font-medium">{getBillingCycleText(subscriptionToView.billingCycle)}</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Next Billing Date</p>
+                <p className="font-medium">
+                  {new Date(subscriptionToView.nextBillingDate).toLocaleDateString()}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {getDaysUntilBilling(subscriptionToView.nextBillingDate)}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Status</p>
+                {getStatusBadge(subscriptionToView)}
+              </div>
+
+              {subscriptionToView.website && (
+                <div className="sm:col-span-2">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Website</p>
+                  <a
+                    href={subscriptionToView.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orange-600 hover:text-orange-700 hover:underline font-medium"
+                  >
+                    {subscriptionToView.website}
+                  </a>
+                </div>
+              )}
+
+              {subscriptionToView.description && (
+                <div className="sm:col-span-2">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Description</p>
+                  <p className="text-gray-900">{subscriptionToView.description}</p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Created</p>
+                <p className="text-sm text-gray-500">
+                  {new Date(subscriptionToView.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Last Updated</p>
+                <p className="text-sm text-gray-500">
+                  {new Date(subscriptionToView.updatedAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Subscription Dialog */}
+      <Dialog 
+        open={editDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setSubscriptionToEdit(null);
+            editForm.reset();
+          }
+          setEditDialogOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Subscription</DialogTitle>
+            <DialogDescription>
+              Make changes to your subscription details.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...editForm}>
+            <form
+              onSubmit={editForm.handleSubmit((data) => {
+                if (!subscriptionToEdit) return;
+                
+                const payload: UpdateSubscriptionRequest = {
+                  name: data.name,
+                  description: data.description || undefined,
+                  cost: Number(data.cost),
+                  currency: data.currency,
+                  billingCycle: Number(data.billingCycle) as BillingCycle,
+                  nextBillingDate: data.nextBillingDate,
+                  website: data.website || undefined,
+                  categoryId: Number(data.categoryId),
+                  // Preserve existing flags
+                  isActive: subscriptionToEdit.isActive,
+                  isTrial: data.isTrial,
+                };
+                
+                updateSubscriptionMutation.mutate({ 
+                  id: subscriptionToEdit.id, 
+                  data: payload 
+                });
+              })}
+              className="space-y-4"
+              noValidate
+            >
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Service Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Netflix, Spotify, etc." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="cost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cost</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="9.99" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="currency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Currency</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select currency" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {SUPPORTED_CURRENCIES.map((currency) => (
+                            <SelectItem key={currency.value} value={currency.value}>
+                              {currency.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="billingCycle"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Billing Cycle</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select cycle" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="1">Weekly</SelectItem>
+                          <SelectItem value="2">Monthly</SelectItem>
+                          <SelectItem value="3">Quarterly</SelectItem>
+                          <SelectItem value="4">Semi-annually</SelectItem>
+                          <SelectItem value="5">Annually</SelectItem>
+                          <SelectItem value="6">Biannually</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="nextBillingDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Next Billing Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id.toString()}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="website"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Website (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Brief description..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditDialogOpen(false)}
+                  disabled={updateSubscriptionMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={updateSubscriptionMutation.isPending}
+                >
+                  {updateSubscriptionMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <ConfirmationDialog
