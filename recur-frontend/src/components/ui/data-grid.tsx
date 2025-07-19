@@ -125,7 +125,7 @@ export function DataGrid<T extends Record<string, any>>({
       {searchable && (
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-500" />
             <Input
               placeholder="Search..."
               value={searchTerm}
@@ -133,7 +133,7 @@ export function DataGrid<T extends Record<string, any>>({
               className="pl-10"
             />
           </div>
-          <Button variant="outline" size="sm" className="bg-white">
+                        <Button variant="outline" size="sm" className="bg-white dark:bg-gray-800">
             <Filter className="h-4 w-4 mr-2" />
             Filters
           </Button>
@@ -141,7 +141,7 @@ export function DataGrid<T extends Record<string, any>>({
       )}
 
       {/* Table */}
-      <div className="border-2 border-black rounded-lg bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+      <div className="border-2 border-black rounded-lg bg-white dark:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-black">
@@ -256,7 +256,7 @@ export function DataGrid<T extends Record<string, any>>({
           </table>
         </div>
 
-        {sortedData.length === 0 && <div className="p-8 text-center text-gray-500">No data found</div>}
+        {sortedData.length === 0 && <div className="p-8 text-center text-gray-500 dark:text-gray-500">No data found</div>}
       </div>
 
       {/* Selection Info */}
@@ -266,10 +266,10 @@ export function DataGrid<T extends Record<string, any>>({
             {selectedRows.size} of {sortedData.length} rows selected
           </span>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="bg-white">
+                            <Button size="sm" variant="outline" className="bg-white dark:bg-gray-800">
               Export Selected
             </Button>
-            <Button size="sm" variant="outline" className="bg-white text-red-600 border-red-200">
+                          <Button size="sm" variant="outline" className="bg-white dark:bg-gray-800 text-red-600 border-red-200">
               Delete Selected
             </Button>
           </div>
