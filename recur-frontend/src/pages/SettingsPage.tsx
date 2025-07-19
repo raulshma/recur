@@ -47,6 +47,7 @@ import { useForm } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import { settingsApi, type UserSettings, type UpdateProfileRequest, type UpdateUserSettingsRequest } from '../api/settings';
+import { validateDiscordWebhookUrl } from '../utils/discord-webhook-validator';
 import { SUPPORTED_CURRENCIES } from '@/lib/utils';
 import { CurrencySettings } from '@/components/currency-settings';
 
@@ -58,6 +59,7 @@ const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [hasUnsavedDiscordChanges, setHasUnsavedDiscordChanges] = useState(false);
 
   // Form for profile settings
   const profileForm = useForm<UpdateProfileRequest>({
@@ -103,7 +105,8 @@ const SettingsPage: React.FC = () => {
       
       // Ensure all required currency settings are present
       const defaultSettings = {
-        emailNotifications: false,
+        discordNotifications: false,
+        discordWebhookUrl: '',
         trialEndingAlerts: false,
         billingReminders: false,
         priceChangeAlerts: false,
@@ -125,11 +128,13 @@ const SettingsPage: React.FC = () => {
       // Merge with defaults to ensure all required properties exist
       const mergedSettings = { ...defaultSettings, ...settings };
       setUserSettings(mergedSettings);
+      setHasUnsavedDiscordChanges(false);
     } catch (error) {
       console.error('Failed to fetch user settings:', error);
       // Set default settings on error
       setUserSettings({
-        emailNotifications: false,
+        discordNotifications: false,
+        discordWebhookUrl: '',
         trialEndingAlerts: false,
         billingReminders: false,
         priceChangeAlerts: false,
@@ -193,9 +198,9 @@ const SettingsPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await authApi.changePassword({
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
-        confirmNewPassword: data.confirmNewPassword,
+        currentPassword: (data as any).currentPassword,
+        newPassword: (data as any).newPassword,
+        confirmNewPassword: (data as any).confirmNewPassword,
       });
       if (response.success) {
         securityForm.reset();
@@ -210,6 +215,13 @@ const SettingsPage: React.FC = () => {
 
   const handleNotificationChange = async (key: keyof UserSettings, value: boolean | number | string) => {
     if (!userSettings) return;
+
+    // Special handling for Discord notifications toggle
+    if (key === 'discordNotifications' && value === true) {
+      // Just update the UI state, don't save yet
+      setUserSettings({ ...userSettings, [key]: value });
+      return;
+    }
 
     try {
       // Create a copy of the current settings
@@ -237,8 +249,8 @@ const SettingsPage: React.FC = () => {
         // No need to await this, let it happen in the background
         try {
           // Clear any cached currency data that might be using old settings
-          if (window.clearCurrencyCache && typeof window.clearCurrencyCache === 'function') {
-            window.clearCurrencyCache();
+          if ((window as any).clearCurrencyCache && typeof (window as any).clearCurrencyCache === 'function') {
+            (window as any).clearCurrencyCache();
           }
         } catch (cacheError) {
           console.warn('Failed to clear currency cache:', cacheError);
@@ -251,6 +263,41 @@ const SettingsPage: React.FC = () => {
       
       // Show error message (you could add a toast notification here)
       console.error(`Failed to update ${key}. Please try again.`);
+    }
+  };
+
+  const handleDiscordSettingsSave = async () => {
+    if (!userSettings) return;
+
+    try {
+      setLoading(true);
+      
+      // Validate webhook URL if Discord notifications are enabled
+      if (userSettings.discordNotifications) {
+        if (!userSettings.discordWebhookUrl) {
+          alert('Please enter a Discord webhook URL');
+          return;
+        }
+        
+        const validation = validateDiscordWebhookUrl(userSettings.discordWebhookUrl);
+        if (!validation.isValid) {
+          alert(`Invalid webhook URL: ${validation.error}`);
+          return;
+        }
+      }
+
+      // Save Discord settings
+      const response = await settingsApi.updateUserSettings(userSettings);
+      console.log('Discord settings saved:', response);
+      
+      // Show success message
+      alert('Discord notification settings saved successfully!');
+      setHasUnsavedDiscordChanges(false);
+    } catch (error) {
+      console.error('Failed to save Discord settings:', error);
+      alert('Failed to save Discord settings. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -492,7 +539,8 @@ const SettingsPage: React.FC = () => {
           ) : (
             <CurrencySettings
               settings={userSettings || {
-                emailNotifications: false,
+                discordNotifications: false,
+                discordWebhookUrl: '',
                 trialEndingAlerts: false,
                 billingReminders: false,
                 priceChangeAlerts: false,
@@ -531,15 +579,113 @@ const SettingsPage: React.FC = () => {
             <CardContent className="space-y-6">
               {userSettings && (
                 <>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Email Notifications</Label>
-                      <p className="text-sm text-gray-600">Receive notifications via email</p>
+                  <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Discord Notifications</Label>
+                        <p className="text-sm text-gray-600">Receive notifications via Discord webhook</p>
+                      </div>
+                      <Switch
+                        checked={userSettings.discordNotifications}
+                        onCheckedChange={(checked) => {
+                          if (!checked) {
+                            // If disabling, save immediately
+                            handleNotificationChange('discordNotifications', checked);
+                            setHasUnsavedDiscordChanges(false);
+                          } else {
+                            // If enabling, just update UI state
+                            setUserSettings({ ...userSettings, discordNotifications: checked });
+                            setHasUnsavedDiscordChanges(true);
+                          }
+                        }}
+                      />
                     </div>
-                    <Switch
-                      checked={userSettings.emailNotifications}
-                      onCheckedChange={(checked) => handleNotificationChange('emailNotifications', checked)}
-                    />
+                    
+                    {userSettings.discordNotifications && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="discord-webhook">Discord Webhook URL *</Label>
+                          <Input
+                            id="discord-webhook"
+                            type="url"
+                            placeholder="https://discord.com/api/webhooks/..."
+                            value={userSettings.discordWebhookUrl || ''}
+                            onChange={(e) => {
+                              const url = e.target.value;
+                              setUserSettings({ ...userSettings, discordWebhookUrl: url });
+                              setHasUnsavedDiscordChanges(true);
+                            }}
+                            className={`font-mono text-sm ${
+                              userSettings.discordWebhookUrl && 
+                              !validateDiscordWebhookUrl(userSettings.discordWebhookUrl).isValid 
+                                ? 'border-red-500' 
+                                : ''
+                            }`}
+                          />
+                          {userSettings.discordWebhookUrl && (
+                            <div className="text-xs">
+                              {validateDiscordWebhookUrl(userSettings.discordWebhookUrl).isValid ? (
+                                <span className="text-green-600">✓ Valid Discord webhook URL</span>
+                              ) : (
+                                <span className="text-red-600">
+                                  ✗ {validateDiscordWebhookUrl(userSettings.discordWebhookUrl).error}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              onClick={handleDiscordSettingsSave}
+                              disabled={loading || !userSettings.discordWebhookUrl}
+                              size="sm"
+                              className={hasUnsavedDiscordChanges ? 'bg-orange-600 hover:bg-orange-700' : ''}
+                            >
+                              {loading ? 'Saving...' : hasUnsavedDiscordChanges ? 'Save Changes' : 'Save Discord Settings'}
+                            </Button>
+                          
+                          {userSettings.discordWebhookUrl && validateDiscordWebhookUrl(userSettings.discordWebhookUrl).isValid && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  await settingsApi.testDiscordNotification(userSettings.discordWebhookUrl!);
+                                  alert('Test notification sent successfully!');
+                                } catch (error) {
+                                  alert('Failed to send test notification. Please check your webhook URL.');
+                                }
+                              }}
+                            >
+                              Test Webhook
+                            </Button>
+                          )}
+                          </div>
+                          
+                          {hasUnsavedDiscordChanges && (
+                            <p className="text-xs text-orange-600">
+                              ⚠️ You have unsaved changes. Click "Save Changes" to apply them.
+                            </p>
+                          )}
+                        </div>
+
+                        <details className="text-xs text-gray-500">
+                          <summary className="cursor-pointer hover:text-gray-700">How to create a Discord webhook</summary>
+                          <div className="mt-2 space-y-1 pl-4">
+                            <p>1. Go to your Discord server settings</p>
+                            <p>2. Navigate to Integrations → Webhooks</p>
+                            <p>3. Click "New Webhook" or "Create Webhook"</p>
+                            <p>4. Choose a channel and copy the webhook URL</p>
+                            <p>5. Paste the URL above and click "Save Discord Settings"</p>
+                            <p>6. Use "Test Webhook" to verify it's working</p>
+                          </div>
+                        </details>
+                      </div>
+                    )}
                   </div>
 
                   <Separator />
@@ -661,25 +807,6 @@ const SettingsPage: React.FC = () => {
                       />
                       <p className="text-sm text-gray-600">Set a monthly spending limit for alerts</p>
                     </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <Label>Theme Preference</Label>
-                    <Select
-                      value={userSettings.theme}
-                      onValueChange={(value) => handleNotificationChange('theme', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {themes.map((theme) => (
-                          <SelectItem key={theme.value} value={theme.value}>
-                            {theme.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                 </>
               )}

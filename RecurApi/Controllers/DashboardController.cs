@@ -15,12 +15,14 @@ public class DashboardController : ControllerBase
 {
     private readonly RecurDbContext _context;
     private readonly ICurrencyConversionService _currencyConversionService;
+    private readonly IDiscordNotificationService _discordNotificationService;
     private readonly ILogger<DashboardController> _logger;
 
-    public DashboardController(RecurDbContext context, ICurrencyConversionService currencyConversionService, ILogger<DashboardController> logger)
+    public DashboardController(RecurDbContext context, ICurrencyConversionService currencyConversionService, IDiscordNotificationService discordNotificationService, ILogger<DashboardController> logger)
     {
         _context = context;
         _currencyConversionService = currencyConversionService;
+        _discordNotificationService = discordNotificationService;
         _logger = logger;
     }
 
@@ -287,6 +289,9 @@ public class DashboardController : ControllerBase
                 });
             }
         }
+
+        // Send Discord notifications if enabled
+        await SendDiscordNotificationsAsync(userId, notifications);
 
         return Ok(notifications.OrderByDescending(n => n.Timestamp).Take(10));
     }
@@ -1296,6 +1301,51 @@ public class DashboardController : ControllerBase
         };
 
         return Ok(patterns);
+    }
+
+    private async Task SendDiscordNotificationsAsync(string userId, List<NotificationDto> notifications)
+    {
+        try
+        {
+            var userSettings = await _context.UserSettings
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if (userSettings?.DiscordNotifications == true && !string.IsNullOrEmpty(userSettings.DiscordWebhookUrl))
+            {
+                foreach (var notification in notifications.Take(3)) // Limit to avoid spam
+                {
+                    var color = notification.Type switch
+                    {
+                        "trial_ending" => "FFA500", // Orange
+                        "billing_reminder" => "4169E1", // Purple
+                        "budget_alert" => "FF0000", // Red
+                        _ => "3447003" // Blue
+                    };
+
+                    await _discordNotificationService.SendNotificationAsync(
+                        userSettings.DiscordWebhookUrl,
+                        GetNotificationTitle(notification.Type),
+                        notification.Message,
+                        color
+                    );
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send Discord notifications for user {UserId}", userId);
+        }
+    }
+
+    private static string GetNotificationTitle(string type)
+    {
+        return type switch
+        {
+            "trial_ending" => "🔔 Trial Ending Soon",
+            "billing_reminder" => "💳 Billing Reminder",
+            "budget_alert" => "⚠️ Budget Alert",
+            _ => "📢 Notification"
+        };
     }
 }
 

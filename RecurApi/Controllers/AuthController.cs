@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using RecurApi.Data;
 using RecurApi.DTOs;
 using RecurApi.Models;
+using RecurApi.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -21,17 +22,23 @@ public class AuthController : ControllerBase
     private readonly SignInManager<User> _signInManager;
     private readonly IConfiguration _configuration;
     private readonly RecurDbContext _context;
+    private readonly IDiscordNotificationService _discordNotificationService;
+    private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         UserManager<User> userManager,
         SignInManager<User> signInManager,
         IConfiguration configuration,
-        RecurDbContext context)
+        RecurDbContext context,
+        IDiscordNotificationService discordNotificationService,
+        ILogger<AuthController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _configuration = configuration;
         _context = context;
+        _discordNotificationService = discordNotificationService;
+        _logger = logger;
     }
 
     [HttpPost("register")]
@@ -309,8 +316,28 @@ public class AuthController : ControllerBase
             _context.UserSettings.Add(settings);
         }
 
+        // Validate Discord webhook URL if provided and Discord notifications are enabled
+        if (dto.DiscordNotifications && !string.IsNullOrEmpty(dto.DiscordWebhookUrl))
+        {
+            if (!IsValidDiscordWebhookUrl(dto.DiscordWebhookUrl))
+            {
+                return BadRequest(new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Invalid Discord webhook URL format. Please provide a valid Discord webhook URL."
+                });
+            }
+        }
+        
+        // Allow saving empty webhook URL when Discord notifications are disabled
+        if (!dto.DiscordNotifications)
+        {
+            dto.DiscordWebhookUrl = null;
+        }
+
         // Update settings
-        settings.EmailNotifications = dto.EmailNotifications;
+        settings.DiscordNotifications = dto.DiscordNotifications;
+        settings.DiscordWebhookUrl = dto.DiscordWebhookUrl;
         settings.TrialEndingAlerts = dto.TrialEndingAlerts;
         settings.BillingReminders = dto.BillingReminders;
         settings.PriceChangeAlerts = dto.PriceChangeAlerts;
@@ -462,7 +489,8 @@ public class AuthController : ControllerBase
     {
         return new UserSettingsDto
         {
-            EmailNotifications = settings.EmailNotifications,
+            DiscordNotifications = settings.DiscordNotifications,
+            DiscordWebhookUrl = settings.DiscordWebhookUrl,
             TrialEndingAlerts = settings.TrialEndingAlerts,
             BillingReminders = settings.BillingReminders,
             PriceChangeAlerts = settings.PriceChangeAlerts,
@@ -477,4 +505,90 @@ public class AuthController : ControllerBase
             BudgetLimit = user.BudgetLimit
         };
     }
+
+    [HttpPost("test-discord")]
+    [Authorize]
+    public async Task<IActionResult> TestDiscordNotification([FromBody] TestDiscordRequest request)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            await _discordNotificationService.SendNotificationAsync(
+                request.WebhookUrl, 
+                "🧪 Test Notification", 
+                "This is a test notification from Recur to verify your Discord webhook is working correctly!"
+            );
+            
+            return Ok(new { success = true, message = "Test notification sent successfully!" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send test Discord notification");
+            return BadRequest(new { success = false, message = "Failed to send test notification. Please check your webhook URL." });
+        }
+    }
+
+    private static bool IsValidDiscordWebhookUrl(string url)
+    {
+        try
+        {
+            var uri = new Uri(url);
+            
+            // Check if it's a Discord webhook URL
+            if (!uri.Host.Contains("discord.com") && !uri.Host.Contains("discordapp.com"))
+            {
+                return false;
+            }
+
+            // Check if it contains the webhook path
+            if (!uri.AbsolutePath.Contains("/api/webhooks/"))
+            {
+                return false;
+            }
+
+            // Check if it has the required webhook ID and token parts
+            var pathParts = uri.AbsolutePath.Split('/');
+            var webhookIndex = Array.IndexOf(pathParts, "webhooks");
+            
+            if (webhookIndex == -1 || pathParts.Length < webhookIndex + 3)
+            {
+                return false;
+            }
+
+            var webhookId = pathParts[webhookIndex + 1];
+            var webhookToken = pathParts[webhookIndex + 2];
+
+            if (string.IsNullOrEmpty(webhookId) || string.IsNullOrEmpty(webhookToken))
+            {
+                return false;
+            }
+
+            // Basic format checks for ID and token
+            if (!long.TryParse(webhookId, out _))
+            {
+                return false;
+            }
+
+            if (webhookToken.Length < 50) // More lenient token length check
+            {
+                return false;
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+
+public class TestDiscordRequest
+{
+    public string WebhookUrl { get; set; } = string.Empty;
 } 

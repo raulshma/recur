@@ -12,8 +12,8 @@ using RecurApi.Data;
 namespace RecurApi.Migrations
 {
     [DbContext(typeof(RecurDbContext))]
-    [Migration("20250717104938_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250719122522_AddDiscordNotifications")]
+    partial class AddDiscordNotifications
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

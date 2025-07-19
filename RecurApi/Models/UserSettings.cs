@@ -7,7 +7,8 @@ public class UserSettings
     public int Id { get; set; }
     
     // Notification preferences
-    public bool EmailNotifications { get; set; } = true;
+    public bool DiscordNotifications { get; set; } = false;
+    public string? DiscordWebhookUrl { get; set; }
     public bool TrialEndingAlerts { get; set; } = true;
     public bool BillingReminders { get; set; } = true;
     public bool PriceChangeAlerts { get; set; } = true;

@@ -206,7 +206,8 @@ namespace RecurApi.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    EmailNotifications = table.Column<bool>(type: "bit", nullable: false),
+                    DiscordNotifications = table.Column<bool>(type: "bit", nullable: false),
+                    DiscordWebhookUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     TrialEndingAlerts = table.Column<bool>(type: "bit", nullable: false),
                     BillingReminders = table.Column<bool>(type: "bit", nullable: false),
                     PriceChangeAlerts = table.Column<bool>(type: "bit", nullable: false),

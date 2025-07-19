@@ -29,9 +29,9 @@ export function useCurrencyConversion(): UseCurrencyConversionReturn {
   const { errorState, handleError, clearError } = useCurrencyErrorHandler();
   
   // Enhanced debouncing and caching for performance optimization
-  const debounceTimeouts = useRef<Map<string, number>>(new Map());
+  const debounceTimeouts = useRef<Map<string, any>>(new Map());
   const conversionCache = useRef<Map<string, { result: ConvertedAmount | null; timestamp: number; hitCount: number }>>(new Map());
-  const batchDebounceTimeout = useRef<number | null>(null);
+  const batchDebounceTimeout = useRef<any>(null);
   const pendingBatchConversions = useRef<Array<{
     conversions: { amount: number; fromCurrency: string }[];
     resolve: (value: ConvertedAmount[]) => void;
@@ -222,7 +222,7 @@ export function useCurrencyConversion(): UseCurrencyConversionReturn {
         }
       }, debounceDelay);
 
-      debounceTimeouts.current.set(cacheKey, timeout);
+      debounceTimeouts.current.set(cacheKey, timeout as any);
     });
 
     // Store the request promise to prevent duplicates
