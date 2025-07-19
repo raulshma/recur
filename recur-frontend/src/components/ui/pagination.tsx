@@ -72,7 +72,7 @@ export function Pagination({
           size="sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
-          className="bg-white"
+          className="bg-white dark:bg-gray-800"
         >
           <ChevronLeft className="h-4 w-4" />
           Previous
@@ -85,7 +85,7 @@ export function Pagination({
           if (page === "ellipsis") {
             return (
               <div key={`ellipsis-${index}`} className="px-3 py-2">
-                <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                <MoreHorizontal className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               </div>
             )
           }
@@ -96,7 +96,7 @@ export function Pagination({
               variant={currentPage === page ? "default" : "outline"}
               size="sm"
               onClick={() => onPageChange(page)}
-              className={cn("min-w-[40px]", currentPage === page ? "bg-orange-500 hover:bg-orange-600" : "bg-white")}
+              className={cn("min-w-[40px]", currentPage === page ? "bg-orange-500 hover:bg-orange-600" : "bg-white dark:bg-gray-800")}
             >
               {page}
             </Button>
@@ -111,7 +111,7 @@ export function Pagination({
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
-          className="bg-white"
+          className="bg-white dark:bg-gray-800"
         >
           Next
           <ChevronRight className="h-4 w-4" />

@@ -82,13 +82,13 @@ export function Rating({
                 sizeClasses[size],
                 "transition-colors",
                 fill === "full" && "fill-orange-500 text-orange-500",
-                fill === "empty" && "fill-gray-200 text-gray-300",
+                fill === "empty" && "fill-gray-200 dark:fill-gray-700 text-gray-300 dark:text-gray-600",
                 fill === "half" && "fill-orange-500 text-orange-500",
               )}
             />
             {fill === "half" && (
               <Star
-                className={cn(sizeClasses[size], "absolute inset-0 fill-gray-200 text-gray-300")}
+                className={cn(sizeClasses[size], "absolute inset-0 fill-gray-200 dark:fill-gray-700 text-gray-300 dark:text-gray-600")}
                 style={{ clipPath: "inset(0 50% 0 0)" }}
               />
             )}

@@ -102,8 +102,8 @@ export function NotificationCenter({
         <ScrollArea className="h-[400px]">
           {notifications.length === 0 ? (
             <div className="p-8 text-center">
-              <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 font-medium">No notifications</p>
+                        <Bell className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400 font-medium">No notifications</p>
             </div>
           ) : (
             <div className="space-y-1 p-2">
@@ -122,11 +122,11 @@ export function NotificationCenter({
                       {getNotificationIcon(notification.type)}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <p className="font-bold text-sm text-gray-900">{notification.title}</p>
+                          <p className="font-bold text-sm text-gray-900 dark:text-gray-100">{notification.title}</p>
                           {!notification.read && <div className="h-2 w-2 bg-orange-500 rounded-full" />}
                         </div>
-                        <p className="text-sm text-gray-700 mt-1">{notification.message}</p>
-                        <p className="text-xs text-gray-500 mt-2">{formatTimestamp(notification.timestamp)}</p>
+                                          <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{notification.message}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{formatTimestamp(notification.timestamp)}</p>
                         {notification.action && (
                           <Button
                             variant="outline"

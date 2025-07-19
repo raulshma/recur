@@ -38,7 +38,7 @@ export function Heatmap({ data, startDate, endDate, className, cellSize = 12, ga
 
   const getColor = (intensity: number) => {
     const colors = [
-      "bg-gray-100", // 0
+              "bg-gray-100 dark:bg-gray-800", // 0
       "bg-orange-200", // 1
       "bg-orange-300", // 2
       "bg-orange-400", // 3
@@ -73,7 +73,7 @@ export function Heatmap({ data, startDate, endDate, className, cellSize = 12, ga
     <div className={cn("p-4", className)}>
       <div className="flex flex-col space-y-2">
         {/* Month labels */}
-        <div className="flex space-x-2 text-xs text-gray-500 mb-2">
+        <div className="flex space-x-2 text-xs text-gray-500 dark:text-gray-400 mb-2">
           {Array.from({ length: weeks }, (_, weekIndex) => {
             const weekStart = dates[weekIndex * 7]
             if (!weekStart || weekIndex % 4 !== 0) return <div key={weekIndex} style={{ width: cellSize }} />
