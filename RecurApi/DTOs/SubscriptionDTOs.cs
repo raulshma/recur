@@ -220,6 +220,16 @@ public class RecentActivityDto
     public string Description { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public string CategoryColor { get; set; } = string.Empty;
+    
+    // Cost information for currency display
+    public decimal Cost { get; set; }
+    public string Currency { get; set; } = string.Empty;
+    public string BillingCycle { get; set; } = string.Empty;
+    
+    // Currency conversion properties
+    public decimal? ConvertedCost { get; set; }
+    public string? ConvertedCurrency { get; set; }
+    public bool IsConverted { get; set; }
 }
 
 public class AnalyticsOverviewDto

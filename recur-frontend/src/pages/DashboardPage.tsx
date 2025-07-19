@@ -280,21 +280,49 @@ const DashboardPage: React.FC = () => {
                 />
               ) : (
                 <div className="space-y-4">
-                  {recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
-                      <div 
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: activity.categoryColor }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{activity.title}</p>
-                        <p className="text-sm text-gray-600">{activity.description}</p>
+                  {recentActivity.map((activity) => {
+                    // Create converted amount object if conversion data is available
+                    const convertedAmount = activity.isConverted && activity.convertedCost && activity.convertedCurrency ? {
+                      originalAmount: activity.cost,
+                      originalCurrency: activity.currency,
+                      convertedAmount: activity.convertedCost,
+                      convertedCurrency: activity.convertedCurrency,
+                      exchangeRate: activity.convertedCost / activity.cost,
+                      isStale: false,
+                      timestamp: new Date()
+                    } : undefined;
+
+                    return (
+                      <div key={activity.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                        <div 
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: activity.categoryColor }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{activity.title}</p>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <CurrencyDisplay
+                              amount={activity.cost}
+                              currency={activity.currency}
+                              convertedAmount={convertedAmount}
+                              showTooltip={activity.isConverted}
+                              tooltipContent={activity.isConverted ? (
+                                <div>
+                                  <div>Original: {formatCurrency(activity.cost, activity.currency)}</div>
+                                  <div>Converted: {formatCurrency(activity.convertedCost!, activity.convertedCurrency!)}</div>
+                                </div>
+                              ) : undefined}
+                              size="sm"
+                            />
+                            <span>{activity.billingCycle}</span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500 flex-shrink-0">
+                          {new Date(activity.timestamp).toLocaleDateString()}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 flex-shrink-0">
-                        {new Date(activity.timestamp).toLocaleDateString()}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

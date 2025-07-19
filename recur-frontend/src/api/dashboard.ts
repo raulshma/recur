@@ -63,6 +63,16 @@ export interface RecentActivity {
   description: string;
   timestamp: string;
   categoryColor: string;
+  
+  // Cost information for currency display
+  cost: number;
+  currency: string;
+  billingCycle: string;
+  
+  // Currency conversion properties
+  convertedCost?: number;
+  convertedCurrency?: string;
+  isConverted: boolean;
 }
 
 export const dashboardApi = {
