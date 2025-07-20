@@ -5,6 +5,10 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAppInitialization } from '@/hooks/useAppInitialization';
+import { QueryProvider } from '@/providers/QueryProvider';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
@@ -18,24 +22,49 @@ Sentry.init({
   // spotlight: __DEV__,
 });
 
-export default Sentry.wrap(function RootLayout() {
+function AppContent() {
   const colorScheme = useColorScheme();
+  const { isLoading, error } = useAppInitialization();
+  
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
+  // Show loading screen while fonts are loading or app is initializing
+  if (!loaded || isLoading) {
+    return (
+      <LoadingSpinner 
+        fullScreen 
+        message={!loaded ? "Loading fonts..." : "Initializing app..."} 
+      />
+    );
+  }
+
+  // Show error if app initialization failed
+  if (error) {
+    console.error('App initialization error:', error);
+    // Still continue to show the app - user can retry or use limited functionality
   }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="auth" options={{ headerShown: false }} />
+        <Stack.Screen name="modals" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
+  );
+}
+
+export default Sentry.wrap(function RootLayout() {
+  return (
+    <ErrorBoundary>
+      <QueryProvider>
+        <AppContent />
+      </QueryProvider>
+    </ErrorBoundary>
   );
 });
