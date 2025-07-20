@@ -11,7 +11,21 @@ using System.Threading.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Handle circular references
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        // Optional: Preserve references instead of ignoring
+        // options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+
+        // Set max depth to prevent deep nesting issues
+        options.JsonSerializerOptions.MaxDepth = 32;
+
+        // Use camelCase for JSON properties
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -29,7 +43,7 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = false;
-    
+
     // User settings
     options.User.RequireUniqueEmail = true;
     options.SignIn.RequireConfirmedEmail = false;
@@ -119,15 +133,15 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<RecurDbContext>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    
+
     // context.Database.ExecuteSqlRaw(@"
     //     DROP DATABASE RecurApiDb;
     // ");
     context.Database.Migrate();
-    
+
     // Seed roles
     await SeedRoles(roleManager);
-    
+
     // Seed initial admin user
     await SeedAdminUser(userManager, context);
 }
@@ -136,7 +150,7 @@ using (var scope = app.Services.CreateScope())
 async Task SeedRoles(RoleManager<IdentityRole> roleManager)
 {
     string[] roles = { "Admin", "User" };
-    
+
     foreach (string role in roles)
     {
         if (!await roleManager.RoleExistsAsync(role))
@@ -164,11 +178,11 @@ async Task SeedAdminUser(UserManager<User> userManager, RecurDbContext context)
         };
 
         var result = await userManager.CreateAsync(adminUser, "Admin@123");
-        
+
         if (result.Succeeded)
         {
             await userManager.AddToRoleAsync(adminUser, "Admin");
-            
+
             // Create admin user settings
             var settings = new UserSettings
             {
@@ -178,7 +192,7 @@ async Task SeedAdminUser(UserManager<User> userManager, RecurDbContext context)
             };
             context.UserSettings.Add(settings);
             await context.SaveChangesAsync();
-            
+
             Console.WriteLine($"Admin user created: {adminEmail} / Admin123!");
         }
     }

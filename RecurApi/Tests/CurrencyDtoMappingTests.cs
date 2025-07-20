@@ -29,9 +29,12 @@ public class CurrencyDtoMappingTests : IDisposable
         _mockLogger = new Mock<ILogger<CurrencyConversionService>>();
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
         
+        var mockServiceProvider = new Mock<IServiceProvider>();
+        
         _currencyService = new CurrencyConversionService(
             _mockExchangeRateProvider.Object,
             _context,
+            mockServiceProvider.Object,
             _memoryCache,
             _mockLogger.Object);
     }

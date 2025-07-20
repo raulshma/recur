@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -8,24 +9,31 @@ using Xunit;
 
 namespace RecurApi.Tests;
 
-public class CurrencyErrorHandlingTests
+public class CurrencyErrorHandlingTests : IDisposable
 {
     private readonly Mock<IExchangeRateProvider> _mockExchangeRateProvider;
-    private readonly Mock<RecurDbContext> _mockContext;
+    private readonly RecurDbContext _context;
+    private readonly Mock<IServiceProvider> _mockServiceProvider;
     private readonly Mock<IMemoryCache> _mockMemoryCache;
     private readonly Mock<ILogger<CurrencyConversionService>> _mockLogger;
     private readonly CurrencyConversionService _service;
 
     public CurrencyErrorHandlingTests()
     {
+        var options = new DbContextOptionsBuilder<RecurDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        
+        _context = new RecurDbContext(options);
         _mockExchangeRateProvider = new Mock<IExchangeRateProvider>();
-        _mockContext = new Mock<RecurDbContext>();
+        _mockServiceProvider = new Mock<IServiceProvider>();
         _mockMemoryCache = new Mock<IMemoryCache>();
         _mockLogger = new Mock<ILogger<CurrencyConversionService>>();
 
         _service = new CurrencyConversionService(
             _mockExchangeRateProvider.Object,
-            _mockContext.Object,
+            _context,
+            _mockServiceProvider.Object,
             _mockMemoryCache.Object,
             _mockLogger.Object
         );
@@ -94,10 +102,7 @@ public class CurrencyErrorHandlingTests
             .Setup(x => x.TryGetValue(It.IsAny<object>(), out It.Ref<object>.IsAny))
             .Returns(false);
 
-        // Mock database cache miss
-        _mockContext
-            .Setup(x => x.Set<ExchangeRate>())
-            .Returns(Mock.Of<Microsoft.EntityFrameworkCore.DbSet<ExchangeRate>>());
+        // Database cache miss - no setup needed for in-memory database
 
         // Act
         var result = await _service.ConvertWithMetadataAsync(100, "USD", "EUR");
@@ -259,5 +264,10 @@ public class CurrencyErrorHandlingTests
         // Assert
         Assert.Equal("USD", result.FromCurrency);
         Assert.Equal("EUR", result.ToCurrency);
+    }
+
+    public void Dispose()
+    {
+        _context?.Dispose();
     }
 }

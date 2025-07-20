@@ -9,28 +9,31 @@ public class CurrencyConversionService : ICurrencyConversionService
 {
     private readonly IExchangeRateProvider _exchangeRateProvider;
     private readonly RecurDbContext _context;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IMemoryCache _memoryCache;
     private readonly ILogger<CurrencyConversionService> _logger;
-    
+
     private const int CacheExpirationHours = 1;
     private const int DatabaseCacheExpirationHours = 24;
-    
+
     // Performance optimization constants
     private const int MaxBatchSize = 100; // Increased for better batch processing
     private const int CacheWarmingBatchSize = 30; // Optimized batch size
     private const int OptimizedQueryBatchSize = 50; // For database query optimization
-    
+
     // Frequently used currency pairs for cache warming
     private static readonly string[] CommonCurrencies = { "USD", "INR" };
 
     public CurrencyConversionService(
         IExchangeRateProvider exchangeRateProvider,
         RecurDbContext context,
+        IServiceProvider serviceProvider,
         IMemoryCache memoryCache,
         ILogger<CurrencyConversionService> logger)
     {
         _exchangeRateProvider = exchangeRateProvider;
         _context = context;
+        _serviceProvider = serviceProvider;
         _memoryCache = memoryCache;
         _logger = logger;
     }
@@ -55,7 +58,7 @@ public class CurrencyConversionService : ICurrencyConversionService
 
         if (string.IsNullOrWhiteSpace(fromCurrency) || string.IsNullOrWhiteSpace(toCurrency))
         {
-            _logger.LogWarning("Invalid currency codes for conversion: FromCurrency={FromCurrency}, ToCurrency={ToCurrency}", 
+            _logger.LogWarning("Invalid currency codes for conversion: FromCurrency={FromCurrency}, ToCurrency={ToCurrency}",
                 fromCurrency, toCurrency);
             throw new ArgumentException("Currency codes cannot be null or empty");
         }
@@ -83,11 +86,11 @@ public class CurrencyConversionService : ICurrencyConversionService
         {
             var exchangeRate = await GetExchangeRateAsync(fromCurrency, toCurrency);
             var convertedAmount = amount * exchangeRate.Rate;
-            
+
             // Debug logging for currency conversion
-            _logger.LogInformation("Currency Conversion Debug: {Amount} {FromCurrency} * {Rate} = {ConvertedAmount} {ToCurrency}", 
+            _logger.LogInformation("Currency Conversion Debug: {Amount} {FromCurrency} * {Rate} = {ConvertedAmount} {ToCurrency}",
                 amount, fromCurrency, exchangeRate.Rate, convertedAmount, toCurrency);
-            
+
             return new CurrencyConversionResult
             {
                 ConvertedAmount = convertedAmount,
@@ -102,9 +105,9 @@ public class CurrencyConversionService : ICurrencyConversionService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Currency conversion failed: {Amount} from {FromCurrency} to {ToCurrency}", 
+            _logger.LogError(ex, "Currency conversion failed: {Amount} from {FromCurrency} to {ToCurrency}",
                 amount, fromCurrency, toCurrency);
-            
+
             return new CurrencyConversionResult
             {
                 ConvertedAmount = amount,
@@ -122,7 +125,7 @@ public class CurrencyConversionService : ICurrencyConversionService
     public async Task<Dictionary<string, decimal>> GetExchangeRatesAsync(string baseCurrency, string[] targetCurrencies)
     {
         var rates = new Dictionary<string, decimal>();
-        
+
         foreach (var targetCurrency in targetCurrencies)
         {
             if (baseCurrency == targetCurrency)
@@ -138,7 +141,7 @@ public class CurrencyConversionService : ICurrencyConversionService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get exchange rate from {BaseCurrency} to {TargetCurrency}", 
+                _logger.LogError(ex, "Failed to get exchange rate from {BaseCurrency} to {TargetCurrency}",
                     baseCurrency, targetCurrency);
                 rates[targetCurrency] = 1.0m; // Fallback
             }
@@ -156,7 +159,7 @@ public class CurrencyConversionService : ICurrencyConversionService
         }
 
         var results = new List<CurrencyConversionResult>();
-        
+
         // Limit batch size for optimal performance
         if (requests.Count > MaxBatchSize)
         {
@@ -172,11 +175,11 @@ public class CurrencyConversionService : ICurrencyConversionService
 
         // Performance optimization: Pre-fetch all required exchange rates in optimized batches
         var exchangeRateCache = new Dictionary<string, ExchangeRate>();
-        
+
         foreach (var pairGroup in currencyPairs)
         {
             var cacheKey = $"{pairGroup.Key.FromCurrency}_{pairGroup.Key.ToCurrency}";
-            
+
             try
             {
                 var rate = await GetExchangeRateAsync(pairGroup.Key.FromCurrency, pairGroup.Key.ToCurrency);
@@ -184,7 +187,7 @@ public class CurrencyConversionService : ICurrencyConversionService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get exchange rate for batch conversion: {FromCurrency} to {ToCurrency}", 
+                _logger.LogError(ex, "Failed to get exchange rate for batch conversion: {FromCurrency} to {ToCurrency}",
                     pairGroup.Key.FromCurrency, pairGroup.Key.ToCurrency);
                 // Create a fallback rate
                 exchangeRateCache[cacheKey] = new ExchangeRate
@@ -261,7 +264,7 @@ public class CurrencyConversionService : ICurrencyConversionService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing batch conversion request: {Amount} from {FromCurrency} to {ToCurrency}", 
+                _logger.LogError(ex, "Error processing batch conversion request: {Amount} from {FromCurrency} to {ToCurrency}",
                     request.Amount, request.FromCurrency, request.ToCurrency);
                 results.Add(CreateErrorResult(request, "Unexpected error during conversion"));
             }
@@ -286,7 +289,7 @@ public class CurrencyConversionService : ICurrencyConversionService
         }
 
         var results = new List<CurrencyConversionResult>();
-        
+
         // Group requests by currency pairs and validate
         var validRequests = new List<BatchConversionRequest>();
         foreach (var request in requests)
@@ -296,11 +299,11 @@ public class CurrencyConversionService : ICurrencyConversionService
                 results.Add(CreateErrorResult(request, "Invalid request parameters"));
                 continue;
             }
-            
+
             // Normalize currency codes
             request.FromCurrency = request.FromCurrency.Trim().ToUpperInvariant();
             request.ToCurrency = request.ToCurrency.Trim().ToUpperInvariant();
-            
+
             validRequests.Add(request);
         }
 
@@ -321,7 +324,7 @@ public class CurrencyConversionService : ICurrencyConversionService
             .ToList();
 
         var allExchangeRates = new Dictionary<string, Dictionary<string, decimal>>();
-        
+
         foreach (var baseCurrency in uniqueBaseCurrencies)
         {
             var targetCurrencies = currencyPairGroups
@@ -382,7 +385,7 @@ public class CurrencyConversionService : ICurrencyConversionService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing optimized batch conversion request: {Amount} from {FromCurrency} to {ToCurrency}", 
+                _logger.LogError(ex, "Error processing optimized batch conversion request: {Amount} from {FromCurrency} to {ToCurrency}",
                     request.Amount, request.FromCurrency, request.ToCurrency);
                 results.Add(CreateErrorResult(request, "Unexpected error during conversion"));
             }
@@ -395,10 +398,10 @@ public class CurrencyConversionService : ICurrencyConversionService
     public async Task<Dictionary<string, decimal>> GetOptimizedExchangeRatesAsync(string baseCurrency, HashSet<string> targetCurrencies)
     {
         var rates = new Dictionary<string, decimal>();
-        
+
         // Remove base currency from targets if present
         targetCurrencies.Remove(baseCurrency);
-        
+
         if (!targetCurrencies.Any())
         {
             return rates;
@@ -408,12 +411,12 @@ public class CurrencyConversionService : ICurrencyConversionService
         var cachedRates = new Dictionary<string, decimal>();
         var uncachedCurrencies = new HashSet<string>();
         var cacheKeys = new Dictionary<string, string>();
-        
+
         foreach (var targetCurrency in targetCurrencies)
         {
             var cacheKey = $"exchange_rate_{baseCurrency}_{targetCurrency}";
             cacheKeys[targetCurrency] = cacheKey;
-            
+
             if (_memoryCache.TryGetValue(cacheKey, out ExchangeRate? cachedRate) && cachedRate != null)
             {
                 cachedRates[targetCurrency] = cachedRate.Rate;
@@ -434,28 +437,29 @@ public class CurrencyConversionService : ICurrencyConversionService
                 .Select(g => g.Select(x => x.currency).ToList())
                 .ToList();
 
+            // Process batches sequentially to avoid DbContext concurrency issues
             foreach (var batch in batches)
             {
                 // Use the optimized index IX_ExchangeRate_Currencies_Expiry for better performance
                 var dbRates = await _context.Set<ExchangeRate>()
-                    .Where(r => r.FromCurrency == baseCurrency && 
-                               batch.Contains(r.ToCurrency) && 
+                    .Where(r => r.FromCurrency == baseCurrency &&
+                               batch.Contains(r.ToCurrency) &&
                                r.ExpiresAt > DateTime.UtcNow)
                     .OrderByDescending(r => r.Timestamp) // Get most recent rates first
                     .ToListAsync();
 
                 // Performance optimization: Batch memory cache operations
                 var memoryBatchOperations = new List<(string key, ExchangeRate rate)>();
-                
+
                 foreach (var dbRate in dbRates)
                 {
                     cachedRates[dbRate.ToCurrency] = dbRate.Rate;
                     uncachedCurrencies.Remove(dbRate.ToCurrency);
-                    
+
                     // Prepare batch memory cache operation
                     memoryBatchOperations.Add((cacheKeys[dbRate.ToCurrency], dbRate));
                 }
-                
+
                 // Execute batch memory cache operations
                 foreach (var (key, rate) in memoryBatchOperations)
                 {
@@ -470,18 +474,18 @@ public class CurrencyConversionService : ICurrencyConversionService
             try
             {
                 var apiResponse = await _exchangeRateProvider.GetRatesAsync(baseCurrency);
-                
+
                 if (apiResponse.Success)
                 {
                     var ratesToSave = new List<ExchangeRate>();
                     var memoryBatchOperations = new List<(string key, ExchangeRate rate)>();
-                    
+
                     foreach (var targetCurrency in uncachedCurrencies)
                     {
                         if (apiResponse.Rates.TryGetValue(targetCurrency, out var rate))
                         {
                             cachedRates[targetCurrency] = rate;
-                            
+
                             var exchangeRate = new ExchangeRate
                             {
                                 FromCurrency = baseCurrency,
@@ -491,18 +495,18 @@ public class CurrencyConversionService : ICurrencyConversionService
                                 ExpiresAt = DateTime.UtcNow.AddHours(DatabaseCacheExpirationHours),
                                 Source = "exchangerate-api"
                             };
-                            
+
                             ratesToSave.Add(exchangeRate);
                             memoryBatchOperations.Add((cacheKeys[targetCurrency], exchangeRate));
                         }
                         else
                         {
-                            _logger.LogWarning("Exchange rate not available for {BaseCurrency} to {TargetCurrency}", 
+                            _logger.LogWarning("Exchange rate not available for {BaseCurrency} to {TargetCurrency}",
                                 baseCurrency, targetCurrency);
                             cachedRates[targetCurrency] = 1.0m; // Fallback
                         }
                     }
-                    
+
                     // Performance optimization: Batch database save with single transaction
                     if (ratesToSave.Any())
                     {
@@ -512,7 +516,7 @@ public class CurrencyConversionService : ICurrencyConversionService
                             _context.Set<ExchangeRate>().AddRange(ratesToSave);
                             await _context.SaveChangesAsync();
                             await transaction.CommitAsync();
-                            
+
                             // Execute batch memory cache operations after successful DB save
                             foreach (var (key, rate) in memoryBatchOperations)
                             {
@@ -549,7 +553,7 @@ public class CurrencyConversionService : ICurrencyConversionService
 
         // Add base currency rate
         rates[baseCurrency] = 1.0m;
-        
+
         // Add all cached rates
         foreach (var kvp in cachedRates)
         {
@@ -565,13 +569,17 @@ public class CurrencyConversionService : ICurrencyConversionService
         try
         {
             _logger.LogInformation("Starting cache warming for common currency pairs with base currency {BaseCurrency}", baseCurrency);
-            
+
             var targetCurrencies = CommonCurrencies.Where(c => c != baseCurrency).ToHashSet();
-            
+
             if (!targetCurrencies.Any())
             {
                 return;
             }
+
+            // Use a separate DbContext instance to avoid concurrency issues
+            using var scope = _serviceProvider.CreateScope();
+            using var context = scope.ServiceProvider.GetRequiredService<RecurDbContext>();
 
             // Check which currencies are not already cached
             var uncachedCurrencies = new HashSet<string>();
@@ -581,13 +589,13 @@ public class CurrencyConversionService : ICurrencyConversionService
                 if (!_memoryCache.TryGetValue(cacheKey, out ExchangeRate? cachedRate) || cachedRate == null)
                 {
                     // Check database cache using optimized query
-                    var dbRate = await _context.Set<ExchangeRate>()
-                        .Where(r => r.FromCurrency == baseCurrency && 
-                                   r.ToCurrency == targetCurrency && 
+                    var dbRate = await context.Set<ExchangeRate>()
+                        .Where(r => r.FromCurrency == baseCurrency &&
+                                   r.ToCurrency == targetCurrency &&
                                    r.ExpiresAt > DateTime.UtcNow)
                         .OrderByDescending(r => r.Timestamp)
                         .FirstOrDefaultAsync();
-                    
+
                     if (dbRate == null)
                     {
                         uncachedCurrencies.Add(targetCurrency);
@@ -613,19 +621,19 @@ public class CurrencyConversionService : ICurrencyConversionService
                 {
                     try
                     {
-                        var rates = await GetOptimizedExchangeRatesAsync(baseCurrency, batch.ToHashSet());
-                        _logger.LogInformation("Warmed cache for {Count} currency pairs with base {BaseCurrency}", 
+                        var rates = await GetOptimizedExchangeRatesWithSeparateContextAsync(baseCurrency, batch.ToHashSet());
+                        _logger.LogInformation("Warmed cache for {Count} currency pairs with base {BaseCurrency}",
                             rates.Count, baseCurrency);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to warm cache for batch of currencies: {Currencies}", 
+                        _logger.LogWarning(ex, "Failed to warm cache for batch of currencies: {Currencies}",
                             string.Join(", ", batch));
                     }
                 }
             }
-            
-            _logger.LogInformation("Cache warming completed for {BaseCurrency}. Processed {Count} currency pairs", 
+
+            _logger.LogInformation("Cache warming completed for {BaseCurrency}. Processed {Count} currency pairs",
                 baseCurrency, targetCurrencies.Count);
         }
         catch (Exception ex)
@@ -639,12 +647,17 @@ public class CurrencyConversionService : ICurrencyConversionService
     {
         try
         {
+            // Use a separate DbContext instance to avoid concurrency issues
+            using var scope = _serviceProvider.CreateScope();
+            using var context = scope.ServiceProvider.GetRequiredService<RecurDbContext>();
+
             // Get the most frequently requested currency pairs from database using optimized query
-            var frequentPairs = await _context.Set<ExchangeRate>()
+            var frequentPairs = await context.Set<ExchangeRate>()
                 .Where(r => r.FromCurrency == baseCurrency && r.ExpiresAt > DateTime.UtcNow)
                 .GroupBy(r => r.ToCurrency)
-                .Select(g => new { 
-                    Currency = g.Key, 
+                .Select(g => new
+                {
+                    Currency = g.Key,
                     Count = g.Count(),
                     LatestRate = g.OrderByDescending(r => r.Timestamp).First().Rate
                 })
@@ -653,7 +666,7 @@ public class CurrencyConversionService : ICurrencyConversionService
                 .ToListAsync();
 
             var rates = new Dictionary<string, decimal>();
-            
+
             foreach (var pair in frequentPairs)
             {
                 rates[pair.Currency] = pair.LatestRate;
@@ -674,9 +687,13 @@ public class CurrencyConversionService : ICurrencyConversionService
         try
         {
             _logger.LogInformation("Starting cleanup of expired exchange rate cache entries");
-            
+
+            // Use a separate DbContext instance to avoid concurrency issues
+            using var scope = _serviceProvider.CreateScope();
+            using var context = scope.ServiceProvider.GetRequiredService<RecurDbContext>();
+
             // Use optimized query with index for expired entries
-            var expiredEntries = await _context.Set<ExchangeRate>()
+            var expiredEntries = await context.Set<ExchangeRate>()
                 .Where(r => r.ExpiresAt <= DateTime.UtcNow)
                 .ToListAsync();
 
@@ -692,11 +709,11 @@ public class CurrencyConversionService : ICurrencyConversionService
                 var totalDeleted = 0;
                 foreach (var batch in batches)
                 {
-                    _context.Set<ExchangeRate>().RemoveRange(batch);
-                    var deletedCount = await _context.SaveChangesAsync();
+                    context.Set<ExchangeRate>().RemoveRange(batch);
+                    var deletedCount = await context.SaveChangesAsync();
                     totalDeleted += deletedCount;
                 }
-                
+
                 _logger.LogInformation("Cleaned up {Count} expired exchange rate entries", totalDeleted);
             }
             else
@@ -716,7 +733,7 @@ public class CurrencyConversionService : ICurrencyConversionService
         try
         {
             _logger.LogInformation("Preloading {Count} currency pairs for performance optimization", currencyPairs.Count);
-            
+
             var uniquePairs = currencyPairs
                 .Where(pair => pair.from != pair.to)
                 .Distinct()
@@ -729,33 +746,25 @@ public class CurrencyConversionService : ICurrencyConversionService
                 .GroupBy(pair => pair.from)
                 .ToList();
 
-            // Process groups in parallel with controlled concurrency
-            var semaphore = new SemaphoreSlim(3, 3); // Limit to 3 concurrent operations
-            var tasks = groupedPairs.Select(async group =>
+            // Process groups sequentially to avoid DbContext concurrency issues
+            foreach (var group in groupedPairs)
             {
-                await semaphore.WaitAsync();
                 try
                 {
                     var baseCurrency = group.Key;
                     var targetCurrencies = group.Select(pair => pair.to).ToHashSet();
-                    
+
                     // Use optimized exchange rate fetching
                     var rates = await GetOptimizedExchangeRatesAsync(baseCurrency, targetCurrencies);
-                    _logger.LogInformation("Preloaded {Count} currency rates for base currency {BaseCurrency}", 
+                    _logger.LogInformation("Preloaded {Count} currency rates for base currency {BaseCurrency}",
                         rates.Count, baseCurrency);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to preload rates for base currency {BaseCurrency}", group.Key);
                 }
-                finally
-                {
-                    semaphore.Release();
-                }
-            });
+            }
 
-            await Task.WhenAll(tasks);
-            
             _logger.LogInformation("Completed preloading currency pairs");
         }
         catch (Exception ex)
@@ -790,8 +799,8 @@ public class CurrencyConversionService : ICurrencyConversionService
 
         // Check database cache using optimized index
         var dbRate = await _context.Set<ExchangeRate>()
-            .Where(r => r.FromCurrency == fromCurrency && 
-                       r.ToCurrency == toCurrency && 
+            .Where(r => r.FromCurrency == fromCurrency &&
+                       r.ToCurrency == toCurrency &&
                        r.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(r => r.Timestamp)
             .FirstOrDefaultAsync();
@@ -805,15 +814,15 @@ public class CurrencyConversionService : ICurrencyConversionService
 
         // Fetch from external API
         var apiResponse = await _exchangeRateProvider.GetRatesAsync(fromCurrency);
-        
+
         if (!apiResponse.Success || !apiResponse.Rates.TryGetValue(toCurrency, out var rate))
         {
-            _logger.LogError("Failed to get exchange rate from API: {FromCurrency} to {ToCurrency}. API Success: {Success}", 
+            _logger.LogError("Failed to get exchange rate from API: {FromCurrency} to {ToCurrency}. API Success: {Success}",
                 fromCurrency, toCurrency, apiResponse.Success);
             throw new InvalidOperationException($"Unable to get exchange rate from {fromCurrency} to {toCurrency}");
         }
 
-        _logger.LogInformation("Fetched exchange rate from API: {FromCurrency} to {ToCurrency} = {Rate}", 
+        _logger.LogInformation("Fetched exchange rate from API: {FromCurrency} to {ToCurrency} = {Rate}",
             fromCurrency, toCurrency, rate);
 
         var exchangeRate = new ExchangeRate
@@ -829,9 +838,149 @@ public class CurrencyConversionService : ICurrencyConversionService
         // Save to database and cache in memory
         _context.Set<ExchangeRate>().Add(exchangeRate);
         await _context.SaveChangesAsync();
-        
+
         _memoryCache.Set(cacheKey, exchangeRate, TimeSpan.FromHours(CacheExpirationHours));
 
         return exchangeRate;
+    }
+
+    // Helper method that uses a separate DbContext instance for concurrent operations
+    private async Task<Dictionary<string, decimal>> GetOptimizedExchangeRatesWithSeparateContextAsync(string baseCurrency, HashSet<string> targetCurrencies)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<RecurDbContext>();
+
+        var rates = new Dictionary<string, decimal>();
+
+        // Remove base currency from targets if present
+        targetCurrencies.Remove(baseCurrency);
+
+        if (!targetCurrencies.Any())
+        {
+            return rates;
+        }
+
+        // Check memory cache first
+        var cachedRates = new Dictionary<string, decimal>();
+        var uncachedCurrencies = new HashSet<string>();
+        var cacheKeys = new Dictionary<string, string>();
+
+        foreach (var targetCurrency in targetCurrencies)
+        {
+            var cacheKey = $"exchange_rate_{baseCurrency}_{targetCurrency}";
+            cacheKeys[targetCurrency] = cacheKey;
+
+            if (_memoryCache.TryGetValue(cacheKey, out ExchangeRate? cachedRate) && cachedRate != null)
+            {
+                cachedRates[targetCurrency] = cachedRate.Rate;
+            }
+            else
+            {
+                uncachedCurrencies.Add(targetCurrency);
+            }
+        }
+
+        // Query database for uncached rates
+        if (uncachedCurrencies.Any())
+        {
+            var dbRates = await context.Set<ExchangeRate>()
+                .Where(r => r.FromCurrency == baseCurrency &&
+                           uncachedCurrencies.Contains(r.ToCurrency) &&
+                           r.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(r => r.Timestamp)
+                .ToListAsync();
+
+            foreach (var dbRate in dbRates)
+            {
+                cachedRates[dbRate.ToCurrency] = dbRate.Rate;
+                uncachedCurrencies.Remove(dbRate.ToCurrency);
+
+                // Cache in memory
+                _memoryCache.Set(cacheKeys[dbRate.ToCurrency], dbRate, TimeSpan.FromHours(CacheExpirationHours));
+            }
+        }
+
+        // Fetch remaining rates from external API
+        if (uncachedCurrencies.Any())
+        {
+            try
+            {
+                var apiResponse = await _exchangeRateProvider.GetRatesAsync(baseCurrency);
+
+                if (apiResponse.Success)
+                {
+                    var ratesToSave = new List<ExchangeRate>();
+
+                    foreach (var targetCurrency in uncachedCurrencies)
+                    {
+                        if (apiResponse.Rates.TryGetValue(targetCurrency, out var rate))
+                        {
+                            cachedRates[targetCurrency] = rate;
+
+                            var exchangeRate = new ExchangeRate
+                            {
+                                FromCurrency = baseCurrency,
+                                ToCurrency = targetCurrency,
+                                Rate = rate,
+                                Timestamp = apiResponse.Timestamp,
+                                ExpiresAt = DateTime.UtcNow.AddHours(DatabaseCacheExpirationHours),
+                                Source = "exchangerate-api"
+                            };
+
+                            ratesToSave.Add(exchangeRate);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Exchange rate not available for {BaseCurrency} to {TargetCurrency}",
+                                baseCurrency, targetCurrency);
+                            cachedRates[targetCurrency] = 1.0m; // Fallback
+                        }
+                    }
+
+                    // Save to database
+                    if (ratesToSave.Any())
+                    {
+                        context.Set<ExchangeRate>().AddRange(ratesToSave);
+                        await context.SaveChangesAsync();
+
+                        // Cache in memory
+                        foreach (var rate in ratesToSave)
+                        {
+                            var cacheKey = cacheKeys[rate.ToCurrency];
+                            _memoryCache.Set(cacheKey, rate, TimeSpan.FromHours(CacheExpirationHours));
+                        }
+                    }
+                }
+                else
+                {
+                    _logger.LogError("Failed to fetch exchange rates from API for base currency {BaseCurrency}", baseCurrency);
+                    // Use fallback rates
+                    foreach (var targetCurrency in uncachedCurrencies)
+                    {
+                        cachedRates[targetCurrency] = 1.0m;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching exchange rates for {BaseCurrency}", baseCurrency);
+                // Use fallback rates
+                foreach (var targetCurrency in uncachedCurrencies)
+                {
+                    cachedRates[targetCurrency] = 1.0m;
+                }
+            }
+        }
+
+        // Add base currency rate
+        rates[baseCurrency] = 1.0m;
+
+        // Add all cached rates
+        foreach (var kvp in cachedRates)
+        {
+            rates[kvp.Key] = kvp.Value;
+        }
+
+        return rates;
     }
 }

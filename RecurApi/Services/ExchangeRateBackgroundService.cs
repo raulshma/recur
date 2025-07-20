@@ -59,20 +59,18 @@ public class ExchangeRateBackgroundService : BackgroundService
         using var scope = _serviceProvider.CreateScope();
         var exchangeRateProvider = scope.ServiceProvider.GetRequiredService<IExchangeRateProvider>();
         
-        var tasks = new List<Task>();
-        
+        // Process currency pairs sequentially to avoid concurrency issues
         foreach (var baseCurrency in _commonCurrencies)
         {
             foreach (var targetCurrency in _commonCurrencies)
             {
                 if (baseCurrency != targetCurrency)
                 {
-                    tasks.Add(WarmCurrencyPairAsync(exchangeRateProvider, baseCurrency, targetCurrency));
+                    await WarmCurrencyPairAsync(exchangeRateProvider, baseCurrency, targetCurrency);
                 }
             }
         }
         
-        await Task.WhenAll(tasks);
         _logger.LogInformation("Cache warming completed");
     }
 
@@ -111,10 +109,11 @@ public class ExchangeRateBackgroundService : BackgroundService
             }
         }
         
-        var updateTasks = currencyPairs.Distinct().Select(pair => 
-            UpdateCurrencyPairAsync(exchangeRateProvider, pair.fromCurrency, pair.toCurrency));
-        
-        await Task.WhenAll(updateTasks);
+        // Process currency pairs sequentially to avoid concurrency issues
+        foreach (var pair in currencyPairs.Distinct())
+        {
+            await UpdateCurrencyPairAsync(exchangeRateProvider, pair.fromCurrency, pair.toCurrency);
+        }
         
         // Clean up expired rates
         await CleanupExpiredRatesAsync(dbContext);
