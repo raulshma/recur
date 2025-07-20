@@ -67,7 +67,7 @@ export function CurrencySettings({
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label>Enable Currency Conversion</Label>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Automatically convert subscription costs to your preferred
               currency
             </p>
@@ -104,7 +104,7 @@ export function CurrencySettings({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Currency to convert all amounts to
             </p>
           </div>
@@ -130,7 +130,7 @@ export function CurrencySettings({
                 <SelectItem value="1440">24 hours</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               How often to update exchange rates
             </p>
           </div>
@@ -142,7 +142,7 @@ export function CurrencySettings({
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>Auto-Convert All Currencies</Label>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Automatically convert all subscription costs without asking
               </p>
             </div>
@@ -158,7 +158,7 @@ export function CurrencySettings({
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>Show Original Currency</Label>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Display the original currency alongside converted amounts
               </p>
             </div>
@@ -174,7 +174,7 @@ export function CurrencySettings({
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>Show Conversion Rates</Label>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Display exchange rates used for conversions
               </p>
             </div>
@@ -190,42 +190,42 @@ export function CurrencySettings({
 
         <Separator />
 
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h4 className="font-medium text-blue-900 mb-2">
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
             Currency Conversion Preview
           </h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-blue-700">Netflix (USD)</span>
-              <span className="text-blue-900 font-medium">
+              <span className="text-blue-700 dark:text-blue-300">Netflix (USD)</span>
+              <span className="text-blue-900 dark:text-blue-100 font-medium">
                 {settings.enableCurrencyConversion &&
-                settings.preferredDisplayCurrency !== "USD"
+                  settings.preferredDisplayCurrency !== "USD"
                   ? `~${settings.preferredDisplayCurrency} 12.50`
                   : "$15.99"}
                 {settings.enableCurrencyConversion &&
                   settings.showOriginalCurrency &&
                   settings.preferredDisplayCurrency !== "USD" && (
-                    <span className="text-blue-600 ml-2">($15.99)</span>
+                    <span className="text-blue-600 dark:text-blue-400 ml-2">($15.99)</span>
                   )}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-blue-700">Spotify (EUR)</span>
-              <span className="text-blue-900 font-medium">
+              <span className="text-blue-700 dark:text-blue-300">Spotify (EUR)</span>
+              <span className="text-blue-900 dark:text-blue-100 font-medium">
                 {settings.enableCurrencyConversion &&
-                settings.preferredDisplayCurrency !== "EUR"
+                  settings.preferredDisplayCurrency !== "EUR"
                   ? `~${settings.preferredDisplayCurrency} 11.20`
                   : "€9.99"}
                 {settings.enableCurrencyConversion &&
                   settings.showOriginalCurrency &&
                   settings.preferredDisplayCurrency !== "EUR" && (
-                    <span className="text-blue-600 ml-2">(€9.99)</span>
+                    <span className="text-blue-600 dark:text-blue-400 ml-2">(€9.99)</span>
                   )}
               </span>
             </div>
             {settings.enableCurrencyConversion &&
               settings.showConversionRates && (
-                <p className="text-blue-600 text-xs mt-2">
+                <p className="text-blue-600 dark:text-blue-400 text-xs mt-2">
                   Exchange rates: 1 USD = 0.85{" "}
                   {settings.preferredDisplayCurrency}, 1 EUR = 1.12{" "}
                   {settings.preferredDisplayCurrency}

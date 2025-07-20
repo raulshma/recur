@@ -1005,7 +1005,7 @@ const SettingsPage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                 <div>
                   <h4 className="font-medium">Export All Data</h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400">

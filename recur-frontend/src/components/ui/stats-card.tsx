@@ -27,7 +27,7 @@ export function StatsCard({ title, value, change, icon, className }: StatsCardPr
       case "decrease":
         return <TrendingDown className="h-4 w-4 text-red-600" />
       case "neutral":
-        return <Minus className="h-4 w-4 text-gray-600" />
+        return <Minus className="h-4 w-4 text-gray-600 dark:text-gray-400" />
     }
   }
 
@@ -40,7 +40,7 @@ export function StatsCard({ title, value, change, icon, className }: StatsCardPr
       case "decrease":
         return "text-red-600"
       case "neutral":
-        return "text-gray-600"
+        return "text-gray-600 dark:text-gray-400"
     }
   }
 
@@ -49,8 +49,8 @@ export function StatsCard({ title, value, change, icon, className }: StatsCardPr
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2">{value}</p>
             {change && (
               <div className="flex items-center mt-2 space-x-1">
                 {getTrendIcon()}
@@ -60,7 +60,7 @@ export function StatsCard({ title, value, change, icon, className }: StatsCardPr
               </div>
             )}
           </div>
-          {icon && <div className="text-gray-400">{icon}</div>}
+          {icon && <div className="text-gray-400 dark:text-gray-500">{icon}</div>}
         </div>
       </CardContent>
     </Card>

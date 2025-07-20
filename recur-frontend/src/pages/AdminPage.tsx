@@ -228,7 +228,7 @@ const AdminPage: React.FC = () => {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Loading admin panel...</p>
+            <p className="text-gray-600 dark:text-gray-400">Loading admin panel...</p>
           </div>
         </div>
       </div>
@@ -238,7 +238,7 @@ const AdminPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <Crown className="h-8 w-8" />
           Admin Panel
         </h1>
@@ -253,7 +253,7 @@ const AdminPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Users</p>
-                  <p className="text-2xl font-bold">{stats.totalUsers}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.totalUsers}</p>
                 </div>
                 <Users className="h-8 w-8 text-muted-foreground" />
               </div>
@@ -265,9 +265,9 @@ const AdminPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                  <p className="text-2xl font-bold">{stats.activeUsers}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.activeUsers}</p>
                 </div>
-                <Users className="h-8 w-8 text-green-600" />
+                <Users className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
             </CardContent>
           </Card>
@@ -277,9 +277,9 @@ const AdminPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Pending Invites</p>
-                  <p className="text-2xl font-bold">{stats.pendingInvites}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.pendingInvites}</p>
                 </div>
-                <Mail className="h-8 w-8 text-blue-600" />
+                <Mail className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
             </CardContent>
           </Card>
@@ -289,9 +289,9 @@ const AdminPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Pending Requests</p>
-                  <p className="text-2xl font-bold">{stats.pendingInviteRequests}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.pendingInviteRequests}</p>
                 </div>
-                <UserPlus className="h-8 w-8 text-orange-600" />
+                <UserPlus className="h-8 w-8 text-orange-600 dark:text-orange-400" />
               </div>
             </CardContent>
           </Card>
@@ -301,9 +301,9 @@ const AdminPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Subscriptions</p>
-                  <p className="text-2xl font-bold">{stats.totalSubscriptions}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.totalSubscriptions}</p>
                 </div>
-                <Users className="h-8 w-8 text-purple-600" />
+                <Users className="h-8 w-8 text-purple-600 dark:text-purple-400" />
               </div>
             </CardContent>
           </Card>
@@ -386,10 +386,10 @@ const AdminPage: React.FC = () => {
             <CardContent>
               <div className="space-y-4">
                 {users.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={user.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                     <div className="flex items-center space-x-4">
                       <div>
-                        <div className="font-medium">{user.fullName || user.email}</div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{user.fullName || user.email}</div>
                         <div className="text-sm text-muted-foreground">{user.email}</div>
                         <div className="text-xs text-muted-foreground">
                           Joined {new Date(user.createdAt).toLocaleDateString()}
@@ -483,9 +483,9 @@ const AdminPage: React.FC = () => {
             <CardContent>
               <div className="space-y-4">
                 {invites.map((invite) => (
-                  <div key={invite.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={invite.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                     <div>
-                      <div className="font-medium">{invite.email}</div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">{invite.email}</div>
                       <div className="text-sm text-muted-foreground">
                         Role: {invite.role} • 
                         Created: {new Date(invite.createdAt).toLocaleDateString()} • 
@@ -563,11 +563,11 @@ const AdminPage: React.FC = () => {
             <CardContent>
               <div className="space-y-4">
                 {inviteRequests.map((request) => (
-                  <div key={request.id} className="border rounded-lg p-4">
+                  <div key={request.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
-                          <h3 className="text-sm font-medium">{request.firstName} {request.lastName}</h3>
+                          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{request.firstName} {request.lastName}</h3>
                           <Badge variant={request.status === 'Pending' ? 'default' : request.status === 'Approved' ? 'secondary' : 'destructive'}>
                             {request.status}
                           </Badge>
@@ -590,7 +590,7 @@ const AdminPage: React.FC = () => {
                           <Button
                             size="sm"
                             onClick={() => handleReviewInviteRequest(request.id, true)}
-                            className="bg-green-600 hover:bg-green-700"
+                            className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
                           >
                             Approve
                           </Button>

@@ -389,7 +389,7 @@ const AnalyticsPage: React.FC = () => {
                   {topSubscriptions.map((subscription, index) => (
                     <div
                       key={subscription.id}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                      className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
                         <div className="text-lg font-bold text-gray-500 dark:text-gray-500">
@@ -544,7 +544,7 @@ const AnalyticsPage: React.FC = () => {
                     {insights.map((insight, index) => (
                       <div
                         key={index}
-                        className="p-4 border border-gray-200 rounded-lg"
+                        className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
                       >
                         <div className="flex items-start gap-3">
                           {getInsightIcon(insight.type)}

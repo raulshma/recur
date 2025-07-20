@@ -341,7 +341,7 @@ export function UserManagement({
                           <Shield className="h-5 w-5 text-gray-500 dark:text-gray-500" />
                           <div>
                             <h4 className="font-medium">{role.name}</h4>
-                            <p className="text-sm text-gray-500">{role.description}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{role.description}</p>
                           </div>
                         </div>
                         <Badge variant="outline">{role.userCount} users</Badge>
@@ -380,7 +380,7 @@ export function UserManagement({
                           <div key={permission.id} className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium">{permission.name}</p>
-                              <p className="text-xs text-gray-500">{permission.description}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{permission.description}</p>
                             </div>
                             <Switch />
                           </div>

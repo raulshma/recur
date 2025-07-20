@@ -30,26 +30,26 @@ interface NotificationCenterProps {
 const getNotificationIcon = (type: Notification["type"]) => {
   switch (type) {
     case "success":
-      return <Check className="h-4 w-4 text-green-600" />
+      return <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
     case "warning":
-      return <AlertTriangle className="h-4 w-4 text-orange-600" />
+      return <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
     case "error":
-      return <AlertTriangle className="h-4 w-4 text-red-600" />
+      return <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
     default:
-      return <Info className="h-4 w-4 text-blue-600" />
+      return <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
   }
 }
 
 const getNotificationBg = (type: Notification["type"]) => {
   switch (type) {
     case "success":
-      return "bg-green-50 border-green-200"
+      return "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
     case "warning":
-      return "bg-orange-50 border-orange-200"
+      return "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
     case "error":
-      return "bg-red-50 border-red-200"
+      return "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
     default:
-      return "bg-blue-50 border-blue-200"
+      return "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
   }
 }
 
@@ -123,7 +123,7 @@ export function NotificationCenter({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="font-bold text-sm text-gray-900 dark:text-gray-100">{notification.title}</p>
-                          {!notification.read && <div className="h-2 w-2 bg-orange-500 rounded-full" />}
+                          {!notification.read && <div className="h-2 w-2 bg-orange-500 dark:bg-orange-400 rounded-full" />}
                         </div>
                                           <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{notification.message}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{formatTimestamp(notification.timestamp)}</p>

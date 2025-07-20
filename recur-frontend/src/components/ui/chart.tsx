@@ -45,7 +45,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               <div key={index} className="flex flex-col items-center gap-2 flex-1">
                 <div className="flex flex-col items-center">
                   {showValues && (
-                    <span className="text-xs font-bold text-gray-700 mb-1">
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                       {displayValue}
                     </span>
                   )}
@@ -58,7 +58,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                     }}
                   />
                 </div>
-                <span className="text-xs font-bold text-gray-600 text-center">{item.name}</span>
+                <span className="text-xs font-bold text-gray-600 dark:text-gray-400 text-center">{item.name}</span>
               </div>
             )
           })}
@@ -192,6 +192,7 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
             r={innerRadius}
             fill="white"
             stroke="#000"
+            className="dark:fill-gray-800 dark:stroke-gray-300"
             strokeWidth="2"
           />
         </svg>
