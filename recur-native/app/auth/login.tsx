@@ -35,7 +35,7 @@ export default function LoginScreen() {
     rememberMe: false,
   });
   const [errors, setErrors] = useState<FormErrors>({});
-  const [showPassword, setShowPassword] = useState(false);
+
 
   const loginMutation = useLogin();
   const biometricLoginMutation = useBiometricLogin();
@@ -155,7 +155,7 @@ export default function LoginScreen() {
             value={formData.password}
             onChangeText={(text) => handleInputChange('password', text)}
             placeholder="Enter your password"
-            secureTextEntry={!showPassword}
+            secureTextEntry={true}
             error={errors.password}
           />
 
