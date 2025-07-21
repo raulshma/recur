@@ -49,11 +49,12 @@ export const ROUTES = {
     BIOMETRIC_SETUP: '/auth/biometric-setup',
   },
   MAIN: {
-    DASHBOARD: '/(tabs)/dashboard',
+    DASHBOARD: '/(tabs)/',
     SUBSCRIPTIONS: '/(tabs)/subscriptions',
     CATEGORIES: '/(tabs)/categories',
     NOTIFICATIONS: '/(tabs)/notifications',
     PROFILE: '/(tabs)/profile',
+    EXPLORE: '/(tabs)/explore',
   },
   MODALS: {
     ADD_SUBSCRIPTION: '/modals/add-subscription',
@@ -76,6 +77,8 @@ export const THEME = {
     TEXT_PRIMARY: '#000000',
     TEXT_SECONDARY: '#8E8E93',
     BORDER: '#C6C6C8',
+    CARD: '#FFFFFF',
+    DISABLED: '#D1D5DB',
   },
   SPACING: {
     XS: 4,

@@ -2,6 +2,8 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/constants/config';
 import { StoredAuthData, AppSettings, User } from '@/types';
+import { EncryptionService, EncryptedStorage } from './encryption';
+import { StorageMigration, StorageCleanup, StorageBackup } from './migration';
 
 // Secure Storage Service (for sensitive data like tokens)
 export const secureStorage = {
@@ -146,9 +148,12 @@ export const authStorage = {
   // Store authentication data
   async storeAuthData(authData: StoredAuthData): Promise<void> {
     try {
-      await secureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authData.token);
-      await secureStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, authData.refreshToken);
-      await storage.setObject(STORAGE_KEYS.USER_DATA, authData.user);
+      await Promise.all([
+        secureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authData.token),
+        secureStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, authData.refreshToken),
+        secureStorage.setItem('token_expires_at', authData.expiresAt),
+        storage.setObject(STORAGE_KEYS.USER_DATA, authData.user),
+      ]);
     } catch (error) {
       console.error('Failed to store auth data:', error);
       throw new Error('Failed to store authentication data');
@@ -158,10 +163,11 @@ export const authStorage = {
   // Retrieve authentication data
   async getAuthData(): Promise<StoredAuthData | null> {
     try {
-      const [token, refreshToken, userData] = await Promise.all([
+      const [token, refreshToken, userData, expiresAt] = await Promise.all([
         secureStorage.getItem(STORAGE_KEYS.AUTH_TOKEN),
         secureStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN),
         storage.getObject<User>(STORAGE_KEYS.USER_DATA),
+        secureStorage.getItem('token_expires_at'),
       ]);
 
       if (!token || !refreshToken || !userData) {
@@ -172,7 +178,7 @@ export const authStorage = {
         token,
         refreshToken,
         user: userData,
-        expiresAt: new Date().toISOString(), // This should be properly managed
+        expiresAt: expiresAt || new Date().toISOString(),
       };
     } catch (error) {
       console.error('Failed to retrieve auth data:', error);
@@ -186,10 +192,32 @@ export const authStorage = {
       await Promise.all([
         secureStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN),
         secureStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN),
+        secureStorage.removeItem('token_expires_at'),
+        secureStorage.removeItem(STORAGE_KEYS.BIOMETRIC_ENABLED),
+        secureStorage.removeItem('biometric_credentials'),
         storage.removeItem(STORAGE_KEYS.USER_DATA),
       ]);
     } catch (error) {
       console.error('Failed to clear auth data:', error);
+    }
+  },
+
+  // Check if token is expired
+  async isTokenExpired(): Promise<boolean> {
+    try {
+      const expiresAt = await secureStorage.getItem('token_expires_at');
+      if (!expiresAt) {
+        return true; // No expiration time means expired
+      }
+      
+      const expirationTime = new Date(expiresAt).getTime();
+      const currentTime = Date.now();
+      const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
+      
+      return currentTime >= (expirationTime - bufferTime);
+    } catch (error) {
+      console.error('Failed to check token expiration:', error);
+      return true; // Assume expired on error
     }
   },
 
@@ -377,3 +405,102 @@ export const cacheStorage = {
     }
   },
 };
+// Enhanced Storage Service with encryption and migration support
+export class EnhancedStorageService {
+  private encryptedStorage: EncryptedStorage;
+  private initialized = false;
+
+  constructor() {
+    this.encryptedStorage = new EncryptedStorage(storage);
+  }
+
+  // Initialize the storage service
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      // Initialize encryption
+      await this.encryptedStorage.initialize();
+
+      // Run migrations if needed
+      if (await StorageMigration.isMigrationNeeded()) {
+        await StorageMigration.runMigrations();
+      }
+
+      // Run cleanup periodically
+      await StorageCleanup.runCleanup();
+
+      this.initialized = true;
+      console.log('Enhanced storage service initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize enhanced storage service:', error);
+      throw error;
+    }
+  }
+
+  // Store sensitive data with encryption
+  async setSecureItem(key: string, value: string): Promise<void> {
+    await this.ensureInitialized();
+    await this.encryptedStorage.setItem(key, value);
+  }
+
+  // Retrieve sensitive data with decryption
+  async getSecureItem(key: string): Promise<string | null> {
+    await this.ensureInitialized();
+    return await this.encryptedStorage.getItem(key);
+  }
+
+  // Store sensitive object with encryption
+  async setSecureObject<T>(key: string, value: T): Promise<void> {
+    await this.ensureInitialized();
+    await this.encryptedStorage.setObject(key, value);
+  }
+
+  // Retrieve sensitive object with decryption
+  async getSecureObject<T>(key: string): Promise<T | null> {
+    await this.ensureInitialized();
+    return await this.encryptedStorage.getObject<T>(key);
+  }
+
+  // Remove sensitive data
+  async removeSecureItem(key: string): Promise<void> {
+    await this.ensureInitialized();
+    await this.encryptedStorage.removeItem(key);
+  }
+
+  // Create backup
+  async createBackup(): Promise<string> {
+    await this.ensureInitialized();
+    return await StorageBackup.createBackup();
+  }
+
+  // Restore from backup
+  async restoreFromBackup(backupData: string): Promise<void> {
+    await this.ensureInitialized();
+    await StorageBackup.restoreFromBackup(backupData);
+  }
+
+  // Get storage statistics
+  async getStorageStats() {
+    await this.ensureInitialized();
+    return await StorageBackup.getStorageStats();
+  }
+
+  // Run cleanup manually
+  async runCleanup(): Promise<void> {
+    await this.ensureInitialized();
+    await StorageCleanup.runCleanup();
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+  }
+}
+
+// Export enhanced storage instance
+export const enhancedStorage = new EnhancedStorageService();
+
+// Export utilities
+export { EncryptionService, StorageMigration, StorageCleanup, StorageBackup };

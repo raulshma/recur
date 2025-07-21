@@ -1,5 +1,12 @@
 import { QueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/constants/config';
+import { focusManager, onlineManager } from '@tanstack/react-query';
+
+// Configure React Query for mobile with offline support
+focusManager.setEventListener((handleFocus) => {
+  // Mobile apps don't have window focus, so we disable this
+  return () => {};
+});
 
 // Create a client with optimized settings for mobile
 export const queryClient = new QueryClient({
@@ -10,7 +17,18 @@ export const queryClient = new QueryClient({
       // Keep data in cache for 10 minutes
       gcTime: 10 * 60 * 1000,
       // Retry failed requests 2 times
-      retry: 2,
+      retry: (failureCount, error: any) => {
+        // Don't retry if we're offline
+        if (!onlineManager.isOnline()) {
+          return false;
+        }
+        // Don't retry on 4xx errors (client errors)
+        if (error?.statusCode >= 400 && error?.statusCode < 500) {
+          return false;
+        }
+        // Retry up to 2 times for other errors
+        return failureCount < 2;
+      },
       // Retry with exponential backoff
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       // Don't refetch on window focus (mobile doesn't have window focus)
@@ -19,12 +37,26 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: true,
       // Don't refetch on mount if data is fresh
       refetchOnMount: 'always',
+      // Network mode for offline support
+      networkMode: 'offlineFirst',
     },
     mutations: {
       // Retry mutations once
-      retry: 1,
+      retry: (failureCount, error: any) => {
+        // Don't retry if we're offline
+        if (!onlineManager.isOnline()) {
+          return false;
+        }
+        // Don't retry on 4xx errors
+        if (error?.statusCode >= 400 && error?.statusCode < 500) {
+          return false;
+        }
+        return failureCount < 1;
+      },
       // Retry delay for mutations
       retryDelay: 1000,
+      // Network mode for offline support
+      networkMode: 'offlineFirst',
     },
   },
 });
@@ -159,4 +191,24 @@ export const removeQueries = {
   all: () => {
     queryClient.clear();
   },
+};
+
+// Configure online manager for React Query
+export const configureOnlineManager = () => {
+  onlineManager.setEventListener((setOnline) => {
+    // Set up network state listener
+    const handleNetworkChange = (isOnline: boolean) => {
+      setOnline(isOnline);
+    };
+    
+    // Return cleanup function
+    return () => {
+      // Cleanup if needed
+    };
+  });
+};
+
+// Helper to manually set online status
+export const setOnlineStatus = (isOnline: boolean) => {
+  onlineManager.setOnline(isOnline);
 };

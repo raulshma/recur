@@ -3,6 +3,13 @@ import { API_CONFIG, STORAGE_KEYS } from '@/constants/config';
 import { ApiError, ApiResponse } from '@/types';
 import * as SecureStore from 'expo-secure-store';
 
+// Store reference for token refresh
+let authStoreRef: any = null;
+
+export const setAuthStoreRef = (store: any) => {
+  authStoreRef = store;
+};
+
 // Create the base axios instance
 const createApiClient = (): AxiosInstance => {
   const client = axios.create({
@@ -78,36 +85,52 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       
       try {
-        const refreshToken = await SecureStore.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
-        
-        if (refreshToken) {
-          // Attempt to refresh the token
-          const refreshResponse = await axios.post(
-            `${API_CONFIG.BASE_URL}/auth/refresh`,
-            { refreshToken },
-            { timeout: API_CONFIG.TIMEOUT }
-          );
-          
-          const { token: newToken, refreshToken: newRefreshToken } = refreshResponse.data;
-          
-          // Store new tokens
-          await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, newToken);
-          await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
+        // Use auth store for token refresh if available
+        if (authStoreRef) {
+          const newToken = await authStoreRef.getState().refreshToken();
           
           // Update the original request with new token
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           
           // Retry the original request
           return apiClient(originalRequest);
+        } else {
+          // Fallback to direct token refresh
+          const refreshToken = await SecureStore.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+          
+          if (refreshToken) {
+            // Attempt to refresh the token
+            const refreshResponse = await axios.post(
+              `${API_CONFIG.BASE_URL}/auth/refresh`,
+              { refreshToken },
+              { timeout: API_CONFIG.TIMEOUT }
+            );
+            
+            const { token: newToken, refreshToken: newRefreshToken } = refreshResponse.data;
+            
+            // Store new tokens
+            await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, newToken);
+            await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
+            
+            // Update the original request with new token
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            
+            // Retry the original request
+            return apiClient(originalRequest);
+          }
         }
       } catch (refreshError) {
-        // Refresh failed, clear stored tokens and redirect to login
-        await SecureStore.deleteItemAsync(STORAGE_KEYS.AUTH_TOKEN);
-        await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
-        await SecureStore.deleteItemAsync(STORAGE_KEYS.USER_DATA);
+        // Refresh failed, clear auth state
+        if (authStoreRef) {
+          // Use auth store to handle logout
+          await authStoreRef.getState().logout();
+        } else {
+          // Fallback: clear stored tokens
+          await SecureStore.deleteItemAsync(STORAGE_KEYS.AUTH_TOKEN);
+          await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+          await SecureStore.deleteItemAsync(STORAGE_KEYS.USER_DATA);
+        }
         
-        // You might want to emit an event here to redirect to login
-        // or use a navigation service
         console.warn('Token refresh failed, user needs to login again');
       }
     }

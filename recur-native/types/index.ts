@@ -284,16 +284,16 @@ export interface ModalParamList {
 
 // Form Types
 export interface FormFieldProps {
-  label: string;
+  label?: string | undefined;
   value: string;
   onChangeText: (text: string) => void;
-  placeholder?: string;
-  error?: string;
-  secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  multiline?: boolean;
-  numberOfLines?: number;
+  placeholder?: string | undefined;
+  error?: string | undefined;
+  secureTextEntry?: boolean | undefined;
+  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad' | undefined;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters' | undefined;
+  multiline?: boolean | undefined;
+  numberOfLines?: number | undefined;
 }
 
 // Component Props Types
