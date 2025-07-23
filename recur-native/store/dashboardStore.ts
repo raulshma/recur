@@ -153,28 +153,28 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       
       const results = await Promise.allSettled(fetchPromises);
       
-      // Process results and update state
-      const stats = results[0].status === 'fulfilled' ? results[0].value : cachedStats;
-      const monthlySpending = results[1].status === 'fulfilled' ? results[1].value : cachedMonthlySpending;
-      const categorySpending = results[2].status === 'fulfilled' ? results[2].value : cachedCategorySpending;
-      const upcomingBills = results[3].status === 'fulfilled' ? results[3].value : cachedUpcomingBills;
-      const recentActivity = results[4].status === 'fulfilled' ? results[4].value : cachedRecentActivity;
+      // Process results and update state with proper type casting
+      const stats = (results[0]?.status === 'fulfilled' ? results[0].value : cachedStats) as DashboardStats | undefined;
+      const monthlySpending = (results[1]?.status === 'fulfilled' ? results[1].value : cachedMonthlySpending) as MonthlySpending[] | undefined;
+      const categorySpending = (results[2]?.status === 'fulfilled' ? results[2].value : cachedCategorySpending) as CategorySpending[] | undefined;
+      const upcomingBills = (results[3]?.status === 'fulfilled' ? results[3].value : cachedUpcomingBills) as UpcomingBill[] | undefined;
+      const recentActivity = (results[4]?.status === 'fulfilled' ? results[4].value : cachedRecentActivity) as RecentActivity[] | undefined;
       
       // Cache successful results
       const cachePromises = [];
-      if (results[0].status === 'fulfilled') {
+      if (results[0]?.status === 'fulfilled') {
         cachePromises.push(cacheStorage.setCacheData(`dashboard_stats_${targetCurrency}`, stats, 5)); // 5 minutes
       }
-      if (results[1].status === 'fulfilled') {
+      if (results[1]?.status === 'fulfilled') {
         cachePromises.push(cacheStorage.setCacheData(`monthly_spending_${targetCurrency}`, monthlySpending, 10)); // 10 minutes
       }
-      if (results[2].status === 'fulfilled') {
+      if (results[2]?.status === 'fulfilled') {
         cachePromises.push(cacheStorage.setCacheData(`category_spending_${targetCurrency}`, categorySpending, 10)); // 10 minutes
       }
-      if (results[3].status === 'fulfilled') {
+      if (results[3]?.status === 'fulfilled') {
         cachePromises.push(cacheStorage.setCacheData(`upcoming_bills_${targetCurrency}`, upcomingBills, 5)); // 5 minutes
       }
-      if (results[4].status === 'fulfilled') {
+      if (results[4]?.status === 'fulfilled') {
         cachePromises.push(cacheStorage.setCacheData(`recent_activity_${targetCurrency}`, recentActivity, 5)); // 5 minutes
       }
       
@@ -183,20 +183,20 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       
       // Update data freshness status
       const dataFreshness = {
-        stats: results[0].status === 'fulfilled' ? 'fresh' : (cachedStats ? 'stale' : 'error'),
-        monthlySpending: results[1].status === 'fulfilled' ? 'fresh' : (cachedMonthlySpending ? 'stale' : 'error'),
-        categorySpending: results[2].status === 'fulfilled' ? 'fresh' : (cachedCategorySpending ? 'stale' : 'error'),
-        upcomingBills: results[3].status === 'fulfilled' ? 'fresh' : (cachedUpcomingBills ? 'stale' : 'error'),
-        recentActivity: results[4].status === 'fulfilled' ? 'fresh' : (cachedRecentActivity ? 'stale' : 'error'),
+        stats: (results[0]?.status === 'fulfilled' ? 'fresh' : (cachedStats ? 'stale' : 'error')) as 'fresh' | 'stale' | 'error' | 'offline',
+        monthlySpending: (results[1]?.status === 'fulfilled' ? 'fresh' : (cachedMonthlySpending ? 'stale' : 'error')) as 'fresh' | 'stale' | 'error' | 'offline',
+        categorySpending: (results[2]?.status === 'fulfilled' ? 'fresh' : (cachedCategorySpending ? 'stale' : 'error')) as 'fresh' | 'stale' | 'error' | 'offline',
+        upcomingBills: (results[3]?.status === 'fulfilled' ? 'fresh' : (cachedUpcomingBills ? 'stale' : 'error')) as 'fresh' | 'stale' | 'error' | 'offline',
+        recentActivity: (results[4]?.status === 'fulfilled' ? 'fresh' : (cachedRecentActivity ? 'stale' : 'error')) as 'fresh' | 'stale' | 'error' | 'offline',
       };
       
       // Update state with fetched data
       set({
-        stats,
-        monthlySpending,
-        categorySpending,
-        upcomingBills,
-        recentActivity,
+        stats: stats || null,
+        monthlySpending: monthlySpending || null,
+        categorySpending: categorySpending || null,
+        upcomingBills: upcomingBills || null,
+        recentActivity: recentActivity || null,
         lastUpdated: new Date(),
         dataFreshness,
       });
@@ -335,7 +335,7 @@ export const registerBackgroundRefresh = async (): Promise<void> => {
       stopOnTerminate: false,
       startOnBoot: true,
     });
-    console.log('Background fetch registered');
+    
   } catch (error) {
     console.error('Failed to register background fetch:', error);
   }
@@ -376,7 +376,13 @@ export const triggerBackgroundRefresh = async (): Promise<boolean> => {
   try {
     const result = await TaskManager.isTaskRegisteredAsync(BACKGROUND_FETCH_TASK);
     if (result) {
-      await BackgroundFetch.fetchTaskAsync(BACKGROUND_FETCH_TASK);
+      // Use the correct method name for background fetch
+      try {
+        await (BackgroundFetch as any).executeTaskAsync?.(BACKGROUND_FETCH_TASK);
+      } catch (error) {
+        // Fallback to setting minimum interval
+        await BackgroundFetch.setMinimumIntervalAsync(15000); // 15 seconds minimum
+      }
       return true;
     }
     return false;

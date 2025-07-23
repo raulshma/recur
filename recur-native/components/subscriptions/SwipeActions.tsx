@@ -16,7 +16,7 @@ interface SwipeActionsProps {
 
 export const SwipeActions: React.FC<SwipeActionsProps> = ({
   actions,
-  progress,
+  progress: _progress,
   dragX,
 }) => {
   const trans = dragX.interpolate({

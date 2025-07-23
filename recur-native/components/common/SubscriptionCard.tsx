@@ -5,20 +5,19 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Platform,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { THEME } from '@/constants/config';
 import { Subscription, BillingCycle } from '@/types';
 import { Card } from './Card';
 
-interface SubscriptionCardProps {
+export interface SubscriptionCardProps {
   subscription: Subscription;
   onPress: (subscription: Subscription) => void;
-  onEdit?: (subscription: Subscription) => void;
-  onCancel?: (subscription: Subscription) => void;
-  onDelete?: (subscription: Subscription) => void;
-  onReactivate?: (subscription: Subscription) => void;
+  onEdit?: ((subscription: Subscription) => void) | undefined;
+  onCancel?: ((subscription: Subscription) => void) | undefined;
+  onDelete?: ((subscription: Subscription) => void) | undefined;
+  onReactivate?: ((subscription: Subscription) => void) | undefined;
 }
 
 export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({

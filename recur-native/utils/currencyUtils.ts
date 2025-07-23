@@ -58,10 +58,15 @@ export const getExchangeRates = async (baseCurrency = 'USD'): Promise<ExchangeRa
     }
     
     // Fetch from API if not in cache
-    const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${baseCurrency}`, {
-      // Add timeout to prevent hanging requests
-      signal: AbortSignal.timeout(5000),
+    // Use a timeout promise instead of AbortSignal to avoid type issues
+    const timeoutPromise = new Promise<Response>((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout')), 5000);
     });
+    
+    const fetchPromise = fetch(`https://api.exchangerate-api.com/v4/latest/${baseCurrency}`);
+    
+    // Race between fetch and timeout
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch exchange rates: ${response.status}`);
@@ -70,23 +75,24 @@ export const getExchangeRates = async (baseCurrency = 'USD'): Promise<ExchangeRa
     const data = await response.json();
     
     // Add timestamp if not present
-    if (!data.timestamp) {
-      data.timestamp = Date.now();
+    const typedData = data as ExchangeRateData;
+    if (!typedData.timestamp) {
+      typedData.timestamp = Date.now();
     }
     
     // Cache the results
     await cacheStorage.setCacheData(`exchange_rates_${baseCurrency}`, data, EXCHANGE_RATE_CACHE_MINUTES);
     
-    return data;
+    return data as ExchangeRateData;
   } catch (error) {
     console.error('Failed to get exchange rates:', error);
     
     // Try to get from cache even if expired as fallback
     try {
       const expiredCache = await storage.getObject<ExchangeRateData>(`cache_exchange_rates_${baseCurrency}`);
-      if (expiredCache?.data) {
+      if (expiredCache) {
         console.log('Using expired exchange rate cache as fallback');
-        return expiredCache.data;
+        return expiredCache;
       }
     } catch (cacheError) {
       console.error('Failed to get expired cache:', cacheError);
@@ -203,10 +209,13 @@ export const batchConvertCurrency = async <T extends { amount: number; currency:
   const currencyGroups: Record<string, T[]> = {};
   
   items.forEach(item => {
-    if (!currencyGroups[item.currency]) {
-      currencyGroups[item.currency] = [];
+    if (item.currency) {
+      if (!currencyGroups[item.currency]) {
+        currencyGroups[item.currency] = [];
+      }
+      // Use optional chaining and nullish coalescing to safely access and update
+      currencyGroups[item.currency]?.push(item);
     }
-    currencyGroups[item.currency].push(item);
   });
   
   // Convert each currency group
@@ -224,7 +233,7 @@ export const batchConvertCurrency = async <T extends { amount: number; currency:
   
   uniqueCurrencies.forEach((currency, index) => {
     const rateResult = ratesResults[index];
-    if (rateResult.status === 'fulfilled' && rateResult.value) {
+    if (rateResult && rateResult.status === 'fulfilled' && 'value' in rateResult && rateResult.value) {
       exchangeRatesMap.set(currency, rateResult.value);
     }
   });

@@ -1,11 +1,12 @@
 import Constants from 'expo-constants';
 
+// Import API configuration from ApiConfig.ts
+import { API_CONFIG as ENV_API_CONFIG } from './ApiConfig';
+
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: __DEV__ 
-    ? 'http://localhost:5000/api' // Development API URL
-    : 'https://api.recur.app/api', // Production API URL
-  TIMEOUT: 10000,
+  ...ENV_API_CONFIG,
+  BASE_URL: ENV_API_CONFIG.API_URL,
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
 } as const;
@@ -73,12 +74,17 @@ export const THEME = {
     WARNING: '#FF9500',
     ERROR: '#FF3B30',
     BACKGROUND: '#F2F2F7',
+    BACKGROUND_SECONDARY: '#E5E5EA', // Added missing color
     SURFACE: '#FFFFFF',
     TEXT_PRIMARY: '#000000',
     TEXT_SECONDARY: '#8E8E93',
     BORDER: '#C6C6C8',
     CARD: '#FFFFFF',
+    CARD_BACKGROUND: '#FFFFFF',
+    SHADOW: '#000000',
     DISABLED: '#D1D5DB',
+    PRIMARY_LIGHT: '#007AFF20', // Added missing color
+    WARNING_LIGHT: '#FF950020', // Added missing color
   },
   SPACING: {
     XS: 4,

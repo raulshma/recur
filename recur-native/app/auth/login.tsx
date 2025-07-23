@@ -9,10 +9,9 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
-import { useLogin, useBiometricLogin, useBiometricStatus } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { THEME, VALIDATION } from '@/constants/config';
 import { LoginCredentials } from '@/types';
 
@@ -36,10 +35,25 @@ export default function LoginScreen() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
+  const { 
+    login, 
+    loginWithBiometric, 
+    error: authError, 
+    clearError, 
+    isLoading, 
+    biometricEnabled, 
+    biometricAvailable,
+    handleLoginSuccess,
+    navigateToBiometricSetup
+  } = useAuth();
 
-  const loginMutation = useLogin();
-  const biometricLoginMutation = useBiometricLogin();
-  const { biometricEnabled, biometricAvailable } = useBiometricStatus();
+  // Set error from auth store if present
+  useEffect(() => {
+    if (authError) {
+      setErrors({ general: authError });
+      clearError();
+    }
+  }, [authError, clearError]);
 
   // Clear general error when user starts typing
   useEffect(() => {
@@ -90,10 +104,8 @@ export default function LoginScreen() {
         rememberMe: formData.rememberMe,
       };
 
-      await loginMutation.mutateAsync(credentials);
-
-      // Navigate to main app after successful login
-      router.replace('/(tabs)/' as any);
+      await login(credentials);
+      handleLoginSuccess();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
       setErrors({ general: errorMessage });
@@ -102,8 +114,8 @@ export default function LoginScreen() {
 
   const handleBiometricLogin = async () => {
     try {
-      await biometricLoginMutation.mutateAsync();
-      router.replace('/(tabs)/' as any);
+      await loginWithBiometric();
+      handleLoginSuccess();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Biometric login failed';
       Alert.alert('Biometric Login Failed', errorMessage);
@@ -117,12 +129,6 @@ export default function LoginScreen() {
       [{ text: 'OK' }]
     );
   };
-
-  const navigateToBiometricSetup = () => {
-    router.push('/auth/biometric-setup');
-  };
-
-  const isLoading = loginMutation.isPending || biometricLoginMutation.isPending;
 
   return (
     <KeyboardAvoidingView
@@ -204,7 +210,7 @@ export default function LoginScreen() {
                   onPress={handleBiometricLogin}
                   variant="outline"
                   size="large"
-                  loading={biometricLoginMutation.isPending}
+                  loading={isLoading}
                   disabled={isLoading}
                   icon="👆"
                 />
@@ -224,7 +230,7 @@ export default function LoginScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Text style={styles.signUpText}>Contact your administrator</Text>
           </Text>
         </View>

@@ -201,8 +201,12 @@ export const useUpdateSubscription = () => {
       await queryClient.cancelQueries({ queryKey: queryKeys.subscriptions.detail(id) });
       await queryClient.cancelQueries({ queryKey: queryKeys.subscriptions.lists() });
       
-      // Apply optimistic update
-      addPendingChange(id, data);
+      // Apply optimistic update with proper type handling
+      const updateData = {
+        ...data,
+        trialEndDate: data.trialEndDate || undefined, // Convert null to undefined
+      };
+      addPendingChange(id, updateData as Partial<Subscription>);
       
       // Return context for potential rollback
       return { id, data, previousData: queryClient.getQueryData(queryKeys.subscriptions.detail(id)) };

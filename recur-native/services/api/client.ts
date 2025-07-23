@@ -2,23 +2,29 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { API_CONFIG, STORAGE_KEYS } from '@/constants/config';
 import { ApiError, ApiResponse } from '@/types';
 import * as SecureStore from 'expo-secure-store';
+import { setupTokenRefreshInterceptor } from './tokenRefreshInterceptor';
+import { processApiError, checkNetworkConnectivity, retryWithBackoff } from './errorHandler';
+import NetInfo from '@react-native-community/netinfo';
+import { Platform } from 'react-native';
 
-// Store reference for token refresh
-let authStoreRef: any = null;
-
-export const setAuthStoreRef = (store: any) => {
-  authStoreRef = store;
-};
-
-// Create the base axios instance
+/**
+ * Create the base axios instance with environment-specific configuration
+ * @returns AxiosInstance configured for the current environment
+ */
 const createApiClient = (): AxiosInstance => {
   const client = axios.create({
-    baseURL: API_CONFIG.BASE_URL,
+    baseURL: API_CONFIG.API_URL,
     timeout: API_CONFIG.TIMEOUT,
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'X-Client-Version': API_CONFIG.ENV === 'development' ? 'dev' : require('../../package.json').version,
+      'X-Client-Platform': Platform.OS,
     },
+    // Add additional options based on environment
+    ...(API_CONFIG.ENV === 'development' ? {
+      validateStatus: status => status < 500, // Don't reject on 4xx errors in dev for easier debugging
+    } : {}),
   });
 
   return client;
@@ -26,18 +32,12 @@ const createApiClient = (): AxiosInstance => {
 
 export const apiClient = createApiClient();
 
-// Request interceptor to add auth token
+// Set up token refresh interceptor
+setupTokenRefreshInterceptor(apiClient);
+
+// Request interceptor for logging
 apiClient.interceptors.request.use(
   async (config) => {
-    try {
-      const token = await SecureStore.getItemAsync(STORAGE_KEYS.AUTH_TOKEN);
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      console.warn('Failed to get auth token from secure storage:', error);
-    }
-    
     // Add request timestamp for debugging
     if (__DEV__) {
       console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
@@ -57,21 +57,18 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling and token refresh
+// Response interceptor for logging and error handling
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    if (__DEV__) {
-      console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, {
-        status: response.status,
-        data: response.data,
-      });
+    // Only log in development or if logging is enabled
+    if (API_CONFIG.ENABLE_LOGGING) {
+      
     }
     return response;
   },
   async (error) => {
-    const originalRequest = error.config;
-    
-    if (__DEV__) {
+    // Log error details if logging is enabled
+    if (API_CONFIG.ENABLE_LOGGING) {
       console.error('[API Response Error]', {
         url: error.config?.url,
         status: error.response?.status,
@@ -79,79 +76,34 @@ apiClient.interceptors.response.use(
         message: error.message,
       });
     }
-
-    // Handle 401 Unauthorized - attempt token refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        // Use auth store for token refresh if available
-        if (authStoreRef) {
-          const newToken = await authStoreRef.getState().refreshToken();
-          
-          // Update the original request with new token
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          
-          // Retry the original request
-          return apiClient(originalRequest);
-        } else {
-          // Fallback to direct token refresh
-          const refreshToken = await SecureStore.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
-          
-          if (refreshToken) {
-            // Attempt to refresh the token
-            const refreshResponse = await axios.post(
-              `${API_CONFIG.BASE_URL}/auth/refresh`,
-              { refreshToken },
-              { timeout: API_CONFIG.TIMEOUT }
-            );
-            
-            const { token: newToken, refreshToken: newRefreshToken } = refreshResponse.data;
-            
-            // Store new tokens
-            await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, newToken);
-            await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
-            
-            // Update the original request with new token
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            
-            // Retry the original request
-            return apiClient(originalRequest);
-          }
-        }
-      } catch (refreshError) {
-        // Refresh failed, clear auth state
-        if (authStoreRef) {
-          // Use auth store to handle logout
-          await authStoreRef.getState().logout();
-        } else {
-          // Fallback: clear stored tokens
-          await SecureStore.deleteItemAsync(STORAGE_KEYS.AUTH_TOKEN);
-          await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
-          await SecureStore.deleteItemAsync(STORAGE_KEYS.USER_DATA);
-        }
-        
-        console.warn('Token refresh failed, user needs to login again');
-      }
-    }
-
-    // Transform error to our ApiError format
-    const apiError: ApiError = {
-      message: error.response?.data?.message || error.message || 'An unexpected error occurred',
-      statusCode: error.response?.status || 0,
-      errors: error.response?.data?.errors,
-    };
-
-    return Promise.reject(apiError);
+    
+    // Process the error to our enhanced format
+    const enhancedError = processApiError(error);
+    
+    // Return the enhanced error
+    return Promise.reject(enhancedError);
   }
 );
 
-// Generic API request wrapper with retry logic
+/**
+ * Enhanced API request wrapper with retry logic and error handling
+ * @param config Axios request configuration
+ * @returns Promise with the response data
+ */
 export const apiRequest = async <T>(
-  config: AxiosRequestConfig,
-  retryCount = 0
+  config: AxiosRequestConfig
 ): Promise<T> => {
-  try {
+  // Check network connectivity before making the request
+  const isConnected = await checkNetworkConnectivity();
+  if (!isConnected) {
+    throw {
+      isOffline: true,
+      message: 'No internet connection. Please check your network settings and try again.',
+    };
+  }
+  
+  // Use retry with backoff for the actual request
+  return retryWithBackoff(async () => {
     const response = await apiClient(config);
     
     // Handle different response formats
@@ -162,20 +114,7 @@ export const apiRequest = async <T>(
     
     // Direct response format
     return response.data;
-  } catch (error) {
-    // Retry logic for network errors
-    if (
-      retryCount < API_CONFIG.RETRY_ATTEMPTS &&
-      (error as ApiError).statusCode >= 500
-    ) {
-      await new Promise(resolve => 
-        setTimeout(resolve, API_CONFIG.RETRY_DELAY * (retryCount + 1))
-      );
-      return apiRequest<T>(config, retryCount + 1);
-    }
-    
-    throw error;
-  }
+  });
 };
 
 // Convenience methods for common HTTP operations

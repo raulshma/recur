@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { VictoryPie, VictoryLabel, VictoryLegend } from 'victory-native';
+import Svg, { Circle, G, Path } from 'react-native-svg';
 import { THEME } from '@/constants/config';
 import { CategorySpending } from '@/types';
 import { formatCurrency } from '@/utils/currencyUtils';
@@ -21,34 +21,12 @@ export const CategorySpendingChart: React.FC<CategorySpendingChartProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<CategorySpending | null>(null);
   
-  // Format data for Victory chart
-  const chartData = data?.map((item) => ({
-    x: item.categoryName,
-    y: item.totalCost,
-    color: item.categoryColor,
-    label: `${item.categoryName}: ${formatCurrency(item.totalCost, currency)}`,
-    ...item,
-  })) || [];
-  
-  // Create legend data
-  const legendData = data?.map((item) => ({
-    name: `${item.categoryName} (${item.subscriptionCount})`,
-    symbol: { fill: item.categoryColor },
-    labels: { fill: THEME.COLORS.TEXT_SECONDARY },
-  })) || [];
-  
-  // Handle category selection
-  const handleCategorySelection = (category: CategorySpending) => {
-    setSelectedCategory(category);
-    
-    if (onSelectCategory) {
-      onSelectCategory(category.categoryId);
-    }
-  };
-  
   // Calculate chart dimensions
   const screenWidth = Dimensions.get('window').width;
   const chartWidth = screenWidth - THEME.SPACING.LG * 2;
+  const chartRadius = chartWidth * 0.4;
+  const centerX = chartWidth / 2;
+  const centerY = 100;
   
   // Calculate total spending
   const totalSpending = data?.reduce((sum, item) => sum + item.totalCost, 0) || 0;
@@ -71,6 +49,61 @@ export const CategorySpendingChart: React.FC<CategorySpendingChartProps> = ({
     );
   }
   
+  // Handle category selection
+  const handleCategorySelection = (category: CategorySpending) => {
+    setSelectedCategory(category);
+    
+    if (onSelectCategory) {
+      onSelectCategory(category.categoryId);
+    }
+  };
+  
+  // Create simple pie chart segments
+  const createPieSegments = () => {
+    if (!data || data.length === 0) return null;
+    
+    let startAngle = 0;
+    const segments = data.map((category, index) => {
+      const percentage = category.totalCost / totalSpending;
+      const angle = percentage * 360;
+      const endAngle = startAngle + angle;
+      
+      // Calculate path for pie segment
+      const x1 = centerX + chartRadius * Math.cos((startAngle - 90) * Math.PI / 180);
+      const y1 = centerY + chartRadius * Math.sin((startAngle - 90) * Math.PI / 180);
+      const x2 = centerX + chartRadius * Math.cos((endAngle - 90) * Math.PI / 180);
+      const y2 = centerY + chartRadius * Math.sin((endAngle - 90) * Math.PI / 180);
+      
+      const largeArcFlag = angle > 180 ? 1 : 0;
+      
+      const pathData = `
+        M ${centerX} ${centerY}
+        L ${x1} ${y1}
+        A ${chartRadius} ${chartRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}
+        Z
+      `;
+      
+      const isSelected = selectedCategory && selectedCategory.categoryId === category.categoryId;
+      
+      const segment = (
+        <Path
+          key={index}
+          d={pathData}
+          fill={category.categoryColor}
+          fillOpacity={isSelected ? 1 : 0.9}
+          stroke={THEME.COLORS.CARD_BACKGROUND}
+          strokeWidth={1}
+          onPress={() => handleCategorySelection(category)}
+        />
+      );
+      
+      startAngle = endAngle;
+      return segment;
+    });
+    
+    return segments;
+  };
+  
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -81,40 +114,17 @@ export const CategorySpendingChart: React.FC<CategorySpendingChartProps> = ({
       </View>
       
       <View style={styles.chartContainer}>
-        <VictoryPie
-          data={chartData}
-          width={chartWidth}
-          height={200}
-          padding={{ top: 0, bottom: 0, left: 0, right: 0 }}
-          colorScale={chartData.map(item => item.color)}
-          innerRadius={chartWidth * 0.15}
-          labelRadius={({ innerRadius }) => (innerRadius || 0) + 30}
-          style={{
-            labels: {
-              fill: 'transparent', // Hide default labels
-            },
-            data: {
-              fillOpacity: ({ datum }) => 
-                selectedCategory && selectedCategory.categoryId === datum.categoryId ? 1 : 0.9,
-              stroke: THEME.COLORS.CARD_BACKGROUND,
-              strokeWidth: 1,
-            },
-          }}
-          events={[{
-            target: "data",
-            eventHandlers: {
-              onPress: (_, props) => {
-                const category = props.datum;
-                handleCategorySelection(category);
-                return null;
-              },
-            }
-          }]}
-          animate={{
-            duration: 500,
-            onLoad: { duration: 500 },
-          }}
-        />
+        <Svg width={chartWidth} height={200}>
+          <G>
+            {createPieSegments()}
+            <Circle
+              cx={centerX}
+              cy={centerY}
+              r={chartRadius * 0.6}
+              fill={THEME.COLORS.CARD_BACKGROUND}
+            />
+          </G>
+        </Svg>
         
         {/* Center label showing selected category or total */}
         <View style={styles.centerLabelContainer}>
@@ -143,17 +153,14 @@ export const CategorySpendingChart: React.FC<CategorySpendingChartProps> = ({
       
       {/* Legend */}
       <View style={styles.legendContainer}>
-        <VictoryLegend
-          width={chartWidth}
-          height={Math.min(120, legendData.length * 25)}
-          data={legendData}
-          orientation="vertical"
-          gutter={10}
-          style={{
-            labels: { fontSize: 12, fill: THEME.COLORS.TEXT_SECONDARY },
-          }}
-          padding={{ top: 0, bottom: 0, left: 0, right: 0 }}
-        />
+        {data.map((item, index) => (
+          <View key={index} style={styles.legendItem}>
+            <View style={[styles.legendSymbol, { backgroundColor: item.categoryColor }]} />
+            <Text style={styles.legendText}>
+              {item.categoryName} ({item.subscriptionCount})
+            </Text>
+          </View>
+        ))}
       </View>
       
       <TouchableOpacity 
@@ -261,6 +268,21 @@ const styles = StyleSheet.create({
     marginTop: THEME.SPACING.MD,
     maxHeight: 120,
     overflow: 'scroll',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: THEME.SPACING.XS,
+  },
+  legendSymbol: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: THEME.SPACING.XS,
+  },
+  legendText: {
+    fontSize: THEME.FONT_SIZES.XS,
+    color: THEME.COLORS.TEXT_SECONDARY,
   },
   viewAllButton: {
     alignSelf: 'center',

@@ -9,7 +9,10 @@ import { useAppInitialization } from '@/hooks/useAppInitialization';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { AuthGuard } from '@/components/auth/AuthGuard';
+import { AuthProvider } from '@/providers/AuthProvider';
 import * as Sentry from '@sentry/react-native';
+import linking from './linking';
 
 Sentry.init({
   dsn: 'https://8479d64f0cb7f63b20e31edbe8b7446d@o4508335945547776.ingest.de.sentry.io/4509701460852816',
@@ -48,12 +51,29 @@ function AppContent() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="auth" options={{ headerShown: false }} />
-        <Stack.Screen name="modals" options={{ headerShown: false, presentation: 'modal' }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+      <AuthGuard>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+          }}
+          // @ts-ignore - linking is supported but TypeScript doesn't recognize it
+          linking={linking}
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="auth" options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="modals" 
+            options={{ 
+              headerShown: false, 
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+            }} 
+          />
+          <Stack.Screen name="subscriptions/[id]" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </AuthGuard>
       <StatusBar style="auto" />
     </ThemeProvider>
   );
@@ -63,7 +83,9 @@ export default Sentry.wrap(function RootLayout() {
   return (
     <ErrorBoundary>
       <QueryProvider>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </QueryProvider>
     </ErrorBoundary>
   );

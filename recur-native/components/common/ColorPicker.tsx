@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
-  Dimensions,
 } from 'react-native';
 import { THEME } from '@/constants/config';
 
@@ -65,9 +64,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     </TouchableOpacity>
   );
   
-  const screenWidth = Dimensions.get('window').width;
   const numColumns = 5;
-  const colorItemSize = (screenWidth - (THEME.SPACING.MD * 2) - (THEME.SPACING.SM * (numColumns - 1))) / numColumns;
   
   return (
     <View style={styles.container}>

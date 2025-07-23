@@ -1,36 +1,58 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import { THEME } from '@/constants/config';
+import { SubscriptionForm } from '@/components/subscriptions/SubscriptionForm';
+import { useCreateSubscription } from '@/hooks/useSubscriptions';
+import { CreateSubscriptionDto, UpdateSubscriptionDto } from '@/types';
+import { StatusBar } from 'expo-status-bar';
 
 export default function AddSubscriptionModal() {
+  const { mutateAsync: createSubscription, isPending } = useCreateSubscription();
+  
+  // Handle both create and update subscription data
+  const handleSubmit = async (data: CreateSubscriptionDto | UpdateSubscriptionDto) => {
+    // For add modal, we only expect CreateSubscriptionDto
+    await createSubscription(data as CreateSubscriptionDto);
+  };
+  
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Add Subscription</Text>
-      <Text style={styles.subtitle}>
-        This modal will be implemented in the Subscription Management Implementation task
-      </Text>
-    </View>
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Add Subscription</Text>
+        </View>
+        
+        <SubscriptionForm
+          onSubmit={handleSubmit}
+          isLoading={isPending}
+        />
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: THEME.COLORS.BACKGROUND,
-    padding: THEME.SPACING.LG,
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  header: {
+    padding: THEME.SPACING.MD,
+    backgroundColor: THEME.COLORS.SURFACE,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.COLORS.BORDER,
   },
   title: {
-    fontSize: THEME.FONT_SIZES.XXL,
+    fontSize: THEME.FONT_SIZES.XL,
     fontWeight: 'bold',
     color: THEME.COLORS.TEXT_PRIMARY,
-    marginBottom: THEME.SPACING.MD,
-  },
-  subtitle: {
-    fontSize: THEME.FONT_SIZES.MD,
-    color: THEME.COLORS.TEXT_SECONDARY,
-    textAlign: 'center',
-    lineHeight: 22,
   },
 });

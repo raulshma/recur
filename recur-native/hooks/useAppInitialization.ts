@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useAppSettingsStore } from '@/store/appSettingsStore';
+import { authStorage } from '@/services/storage';
 import * as SplashScreen from 'expo-splash-screen';
+import { AppState, AppStateStatus } from 'react-native';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -11,10 +13,41 @@ export const useAppInitialization = () => {
   const [error, setError] = useState<string | null>(null);
   
   const checkAuthStatus = useAuthStore(state => state.checkAuthStatus);
+  const refreshToken = useAuthStore(state => state.refreshToken);
   const loadSettings = useAppSettingsStore(state => state.loadSettings);
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const authLoading = useAuthStore(state => state.isLoading);
   const settingsLoading = useAppSettingsStore(state => state.isLoading);
+
+  // Handle app state changes for token refresh
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      // When app comes to foreground
+      if (nextAppState === 'active') {
+        try {
+          // Check if user is authenticated
+          const isAuth = await authStorage.isAuthenticated();
+          if (isAuth) {
+            // Check if token is expired or about to expire
+            const isExpired = await authStorage.isTokenExpired();
+            if (isExpired) {
+              // Refresh token silently
+              await refreshToken();
+            }
+          }
+        } catch (error) {
+          console.error('Error handling app state change:', error);
+        }
+      }
+    };
+
+    // Subscribe to app state changes
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [refreshToken]);
 
   useEffect(() => {
     const initializeApp = async () => {

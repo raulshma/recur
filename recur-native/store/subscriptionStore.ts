@@ -115,20 +115,11 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         // Don't persist pendingChanges as they're handled by React Query
         // Don't persist selectedSubscriptionId as it's UI state
       }),
-      // Custom serialization for Map objects
-      serialize: (state) => {
-        const serializedState = { ...state };
-        if (serializedState.pendingChanges instanceof Map) {
-          serializedState.pendingChanges = Array.from(serializedState.pendingChanges.entries());
+      // Custom serialization/deserialization for Map objects
+      onRehydrateStorage: () => (state) => {
+        if (state && Array.isArray((state as any).pendingChanges)) {
+          state.pendingChanges = new Map((state as any).pendingChanges);
         }
-        return JSON.stringify(serializedState);
-      },
-      deserialize: (str) => {
-        const deserializedState = JSON.parse(str);
-        if (Array.isArray(deserializedState.pendingChanges)) {
-          deserializedState.pendingChanges = new Map(deserializedState.pendingChanges);
-        }
-        return deserializedState;
       }
     }
   )

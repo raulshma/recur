@@ -16,7 +16,7 @@ interface UpcomingBillsListProps {
 
 export const UpcomingBillsList: React.FC<UpcomingBillsListProps> = ({
   data,
-  currency,
+  currency: _currency,
   isLoading,
   maxItems = 5,
   showViewAll = true,
@@ -31,7 +31,8 @@ export const UpcomingBillsList: React.FC<UpcomingBillsListProps> = ({
   
   // Navigate to subscription details
   const navigateToSubscription = (subscriptionId: number) => {
-    router.push(`/modals/subscription-details?id=${subscriptionId}`);
+    // Use router.push with type assertion for dynamic routes
+    router.push(`/modals/subscription-details?id=${subscriptionId}` as any);
   };
   
   // Navigate to all subscriptions

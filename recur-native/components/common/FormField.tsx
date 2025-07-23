@@ -9,6 +9,7 @@ interface ExtendedFormFieldProps extends FormFieldProps {
   required?: boolean;
   helperText?: string;
   containerStyle?: any;
+  editable?: boolean;
 }
 
 export const FormField: React.FC<ExtendedFormFieldProps> = ({

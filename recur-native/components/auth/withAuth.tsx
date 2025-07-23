@@ -3,7 +3,7 @@ import { AuthGuard } from './AuthGuard';
 
 interface WithAuthOptions {
   requireAuth?: boolean;
-  redirectTo?: string | undefined;
+  redirectTo?: string;
 }
 
 export function withAuth<P extends object>(

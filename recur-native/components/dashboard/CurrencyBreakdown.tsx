@@ -64,7 +64,7 @@ export const CurrencyBreakdown: React.FC<CurrencyBreakdownProps> = ({
   breakdowns,
   displayCurrency,
   isLoading = false,
-  onRefresh,
+  onRefresh: _onRefresh,
 }) => {
   if (isLoading) {
     return (

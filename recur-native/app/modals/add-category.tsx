@@ -1,14 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { THEME } from '@/constants/config';
+import { Stack } from 'expo-router';
+import { CategoryForm } from '@/components/categories/CategoryForm';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function AddCategoryModal() {
+export default function AddCategoryScreen() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Add Category</Text>
-      <Text style={styles.subtitle}>
-        This modal will be implemented in the Category Management Implementation task
-      </Text>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <Stack.Screen
+        options={{
+          title: 'Add Category',
+          headerShadowVisible: false,
+          headerStyle: {
+            backgroundColor: THEME.COLORS.BACKGROUND,
+          },
+          headerTitleStyle: {
+            color: THEME.COLORS.TEXT_PRIMARY,
+          },
+          presentation: 'modal',
+        }}
+      />
+      <CategoryForm />
     </View>
   );
 }
@@ -16,21 +31,6 @@ export default function AddCategoryModal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: THEME.COLORS.BACKGROUND,
-    padding: THEME.SPACING.LG,
-  },
-  title: {
-    fontSize: THEME.FONT_SIZES.XXL,
-    fontWeight: 'bold',
-    color: THEME.COLORS.TEXT_PRIMARY,
-    marginBottom: THEME.SPACING.MD,
-  },
-  subtitle: {
-    fontSize: THEME.FONT_SIZES.MD,
-    color: THEME.COLORS.TEXT_SECONDARY,
-    textAlign: 'center',
-    lineHeight: 22,
   },
 });

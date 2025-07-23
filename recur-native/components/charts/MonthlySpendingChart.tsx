@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { VictoryChart, VictoryLine, VictoryAxis, VictoryTooltip, VictoryVoronoiContainer, VictoryTheme, VictoryScatter } from 'victory-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+
 import { THEME } from '@/constants/config';
 import { MonthlySpending } from '@/types';
 import { formatCurrency } from '@/utils/currencyUtils';
@@ -26,32 +26,16 @@ export const MonthlySpendingChart: React.FC<MonthlySpendingChartProps> = ({
     return month.substring(0, 3); // Jan, Feb, etc.
   };
   
-  // Format data for Victory chart
-  const chartData = data?.map((item, index) => ({
-    x: index,
-    y: item.totalCost,
-    month: item.month,
-    year: item.year,
-    label: `${formatMonth(item.month)} ${item.year}: ${formatCurrency(item.totalCost, currency)}`,
-    ...item,
-  })) || [];
-  
   // Handle point selection
-  const handlePointSelection = (point: any) => {
-    const selectedData = data?.find(
-      (item) => item.month === point.month && item.year === point.year
-    ) || null;
+  const handlePointSelection = (point: MonthlySpending) => {
+    setSelectedPoint(point);
     
-    setSelectedPoint(selectedData);
-    
-    if (onSelectMonth && selectedData) {
-      onSelectMonth(selectedData.month, selectedData.year);
+    if (onSelectMonth) {
+      onSelectMonth(point.month, point.year);
     }
   };
   
   // Calculate chart dimensions
-  const screenWidth = Dimensions.get('window').width;
-  const chartWidth = screenWidth - THEME.SPACING.LG * 2;
   
   // If loading and no data, show loading spinner
   if (isLoading && !data?.length) {
@@ -71,6 +55,9 @@ export const MonthlySpendingChart: React.FC<MonthlySpendingChartProps> = ({
     );
   }
   
+  // Find max value for scaling
+  const maxValue = Math.max(...data.map(item => item.totalCost));
+  
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -82,94 +69,45 @@ export const MonthlySpendingChart: React.FC<MonthlySpendingChartProps> = ({
         )}
       </View>
       
-      <View style={styles.chartContainer}>
-        <VictoryChart
-          width={chartWidth}
-          height={220}
-          padding={{ top: 20, bottom: 40, left: 50, right: 20 }}
-          containerComponent={
-            <VictoryVoronoiContainer
-              voronoiDimension="x"
-              labels={({ datum }) => datum.label}
-              labelComponent={
-                <VictoryTooltip
-                  cornerRadius={5}
-                  flyoutStyle={{
-                    fill: THEME.COLORS.CARD_BACKGROUND,
-                    stroke: THEME.COLORS.BORDER,
-                    strokeWidth: 1,
-                  }}
-                  style={{ fill: THEME.COLORS.TEXT_PRIMARY }}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chartScrollContainer}
+      >
+        <View style={styles.chartContainer}>
+          {/* Chart bars */}
+          {data.map((item, index) => {
+            const barHeight = (item.totalCost / maxValue) * 150;
+            const isSelected = selectedPoint && 
+              selectedPoint.month === item.month && 
+              selectedPoint.year === item.year;
+            
+            return (
+              <TouchableOpacity
+                key={index}
+                style={styles.barContainer}
+                onPress={() => handlePointSelection(item)}
+              >
+                <View 
+                  style={[
+                    styles.bar, 
+                    { 
+                      height: barHeight,
+                      backgroundColor: isSelected ? THEME.COLORS.PRIMARY : `${THEME.COLORS.PRIMARY}80`,
+                    }
+                  ]}
                 />
-              }
-              onActivated={(points) => {
-                if (points.length > 0) {
-                  handlePointSelection(points[0]);
-                }
-              }}
-            />
-          }
-        >
-          <VictoryAxis
-            tickFormat={(t, i) => {
-              if (i < chartData.length) {
-                return formatMonth(chartData[i].month);
-              }
-              return '';
-            }}
-            style={{
-              axis: { stroke: THEME.COLORS.BORDER },
-              tickLabels: { 
-                fill: THEME.COLORS.TEXT_SECONDARY,
-                fontSize: 10,
-                padding: 5,
-              },
-              grid: { stroke: 'transparent' },
-            }}
-          />
-          <VictoryAxis
-            dependentAxis
-            tickFormat={(tick) => formatCurrency(tick, currency, true)}
-            style={{
-              axis: { stroke: THEME.COLORS.BORDER },
-              tickLabels: { 
-                fill: THEME.COLORS.TEXT_SECONDARY,
-                fontSize: 10,
-                padding: 5,
-              },
-              grid: { stroke: `${THEME.COLORS.BORDER}30`, strokeDasharray: '5,5' },
-            }}
-          />
-          <VictoryLine
-            data={chartData}
-            style={{
-              data: { 
-                stroke: THEME.COLORS.PRIMARY,
-                strokeWidth: 2,
-              },
-            }}
-            animate={{
-              duration: 500,
-              onLoad: { duration: 500 },
-            }}
-          />
-          <VictoryScatter
-            data={chartData}
-            size={({ active }) => active ? 6 : 4}
-            style={{
-              data: {
-                fill: THEME.COLORS.PRIMARY,
-                stroke: THEME.COLORS.BACKGROUND,
-                strokeWidth: 2,
-              },
-            }}
-            animate={{
-              duration: 500,
-              onLoad: { duration: 500 },
-            }}
-          />
-        </VictoryChart>
-      </View>
+                <Text style={styles.barLabel}>
+                  {formatMonth(item.month)}
+                </Text>
+                <Text style={styles.barValue}>
+                  {formatCurrency(item.totalCost, currency, { compact: true })}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
       
       {isLoading && (
         <View style={styles.loadingOverlay}>
@@ -221,10 +159,34 @@ const styles = StyleSheet.create({
     fontSize: THEME.FONT_SIZES.SM,
     color: THEME.COLORS.TEXT_SECONDARY,
   },
+  chartScrollContainer: {
+    paddingRight: THEME.SPACING.MD,
+  },
   chartContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     height: 220,
+    paddingTop: THEME.SPACING.MD,
+  },
+  barContainer: {
+    alignItems: 'center',
+    width: 50,
+    marginRight: THEME.SPACING.SM,
+  },
+  bar: {
+    width: 20,
+    borderRadius: THEME.BORDER_RADIUS.SM,
+    marginBottom: THEME.SPACING.SM,
+  },
+  barLabel: {
+    fontSize: THEME.FONT_SIZES.XS,
+    color: THEME.COLORS.TEXT_SECONDARY,
+    marginBottom: THEME.SPACING.XS,
+  },
+  barValue: {
+    fontSize: THEME.FONT_SIZES.XS,
+    color: THEME.COLORS.TEXT_PRIMARY,
+    fontWeight: '500',
   },
   loadingContainer: {
     backgroundColor: THEME.COLORS.CARD_BACKGROUND,

@@ -29,7 +29,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
       style={[styles.container, style]}
     >
       <Card style={styles.card}>
-        <View style={styles.colorIndicator} backgroundColor={category.color} />
+        <View style={[styles.colorIndicator, { backgroundColor: category.color }]} />
         <View style={styles.content}>
           <Text style={styles.name} numberOfLines={1}>
             {category.name}

@@ -405,7 +405,7 @@ export const SubscriptionDetailScreen: React.FC = () => {
             onPress={handleDelete}
             variant="outline"
             size="medium"
-            style={styles.deleteButton}
+
           />
         </View>
       </ScrollView>
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: THEME.SPACING.LG,
-    paddingBottom: THEME.SPACING.LG + insets.bottom,
+    paddingBottom: THEME.SPACING.LG + 20, // Fixed value instead of dynamic insets
   },
   card: {
     marginBottom: THEME.SPACING.LG,

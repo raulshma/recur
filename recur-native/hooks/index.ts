@@ -1,7 +1,9 @@
 // Custom hooks exports
 export * from './useAuth';
 export * from './useSubscriptions';
-export * from './useSubscriptionHistory';
+// Explicitly import and re-export to avoid conflicts
+import { useSubscriptionHistory as useSubHistory } from './useSubscriptionHistory';
+export { useSubHistory };
 export * from './useDashboard';
 export * from './useCategories';
 export * from './useNetworkStatus';

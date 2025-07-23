@@ -5,6 +5,7 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  name?: string; // Added for backward compatibility
   timeZone?: string;
   currency: string;
   budgetLimit?: number;
@@ -41,7 +42,7 @@ export interface Subscription {
   billingCycleText: string;
   nextBillingDate: Date;
   trialEndDate?: Date;
-  cancellationDate?: Date;
+  cancellationDate?: Date | null;
   website?: string;
   contactEmail?: string;
   notes?: string;
@@ -57,6 +58,7 @@ export interface Subscription {
   rateTimestamp?: Date;
   isConverted: boolean;
   isRateStale: boolean;
+  isDeleted?: boolean; // Added for soft delete functionality
 }
 
 export interface CurrencyBreakdown {
@@ -77,6 +79,7 @@ export interface DashboardStats {
   daysUntilNextBilling: number;
   displayCurrency: string;
   currencyBreakdowns: CurrencyBreakdown[];
+  timestamp?: number; // Added for caching purposes
 }
 
 export interface MonthlySpending {
@@ -180,7 +183,7 @@ export interface CreateSubscriptionDto {
   currency: string;
   billingCycle: BillingCycle;
   nextBillingDate: Date;
-  trialEndDate?: Date;
+  trialEndDate?: Date | null;
   website?: string;
   contactEmail?: string;
   notes?: string;
@@ -294,6 +297,7 @@ export interface FormFieldProps {
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters' | undefined;
   multiline?: boolean | undefined;
   numberOfLines?: number | undefined;
+  editable?: boolean | undefined;
 }
 
 // Component Props Types
@@ -312,6 +316,16 @@ export interface CardProps {
   onPress?: () => void;
   style?: any;
   elevation?: number;
+  variant?: 'default' | 'outlined' | 'elevated';
+}
+
+// Currency and Exchange Rate Types
+export interface ExchangeRateData {
+  base: string;
+  rates: Record<string, number>;
+  timestamp: number;
+  date?: string;
+  data?: any; // For backward compatibility
 }
 
 // Utility Types

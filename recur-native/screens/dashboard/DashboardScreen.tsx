@@ -231,7 +231,7 @@ export default function DashboardScreen() {
         
         {/* Monthly Spending Chart */}
         <MonthlySpendingChart
-          data={monthlySpending}
+          data={monthlySpending || null}
           currency={currency}
           isLoading={isLoadingMonthlySpending}
           onSelectMonth={handleMonthSelection}
@@ -239,7 +239,7 @@ export default function DashboardScreen() {
         
         {/* Category Spending Chart */}
         <CategorySpendingChart
-          data={categorySpending}
+          data={categorySpending || null}
           currency={currency}
           isLoading={isLoadingCategorySpending}
           onSelectCategory={handleCategorySelection}
@@ -247,7 +247,7 @@ export default function DashboardScreen() {
         
         {/* Upcoming Bills List */}
         <UpcomingBillsList
-          data={upcomingBills}
+          data={upcomingBills || null}
           currency={currency}
           isLoading={isLoadingUpcomingBills}
           maxItems={3}
@@ -256,7 +256,7 @@ export default function DashboardScreen() {
         
         {/* Recent Activity List */}
         <RecentActivityList
-          data={recentActivity}
+          data={recentActivity || null}
           currency={currency}
           isLoading={isLoadingRecentActivity}
           maxItems={3}

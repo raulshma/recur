@@ -17,16 +17,20 @@ export const useNetworkStatus = () => {
   const checkConnectivity = async () => {
     try {
       // Simple connectivity check by trying to fetch a small resource
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch('https://www.google.com/favicon.ico', {
-        method: 'HEAD',
-        cache: 'no-cache',
-        signal: controller.signal,
+      // Use a timeout instead of AbortSignal to avoid type issues
+      const timeoutPromise = new Promise<Response>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), 5000);
       });
       
-      clearTimeout(timeoutId);
+      const fetchPromise = fetch('https://www.google.com/favicon.ico', {
+        method: 'HEAD',
+        cache: 'no-cache',
+      });
+      
+      // Race between fetch and timeout
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      
+      // No need to clear timeout as it will be garbage collected
       
       const isOnline = response.ok;
       const newStatus = {

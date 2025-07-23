@@ -1,8 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuthStatus } from '@/hooks/useAuth';
-import { ROUTES } from '@/constants/config';
+import { useRouter, useSegments } from 'expo-router';
+import { useAuthStore } from '@/store/authStore';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -10,73 +8,32 @@ interface AuthGuardProps {
   redirectTo?: string | undefined;
 }
 
-export const AuthGuard: React.FC<AuthGuardProps> = ({
-  children,
-  requireAuth = true,
-  redirectTo = ROUTES.AUTH.LOGIN,
-}) => {
-  const { isAuthenticated, isLoading } = useAuthStatus();
+/**
+ * AuthGuard component that protects routes requiring authentication
+ * and redirects to login when unauthenticated
+ */
+export function AuthGuard({ children, requireAuth = true, redirectTo = '/auth/login' }: AuthGuardProps) {
   const router = useRouter();
+  const segments = useSegments();
+  const { isAuthenticated, isLoading } = useAuthStore();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (requireAuth && !isAuthenticated) {
-        router.replace(redirectTo as any);
-      } else if (!requireAuth && isAuthenticated) {
-        router.replace('/(tabs)/' as any);
-      }
+    // Skip protection during initial loading
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === 'auth';
+    
+    // If user is not authenticated and not on an auth screen, redirect to login
+    if (requireAuth && !isAuthenticated && !inAuthGroup) {
+      // Use router.replace with type assertion for dynamic routes
+      router.replace(redirectTo as any);
     }
-  }, [isAuthenticated, isLoading, requireAuth, redirectTo, router]);
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
-
-  // Show children only if auth requirements are met
-  if (requireAuth && !isAuthenticated) {
-    return null; // Will redirect in useEffect
-  }
-
-  if (!requireAuth && isAuthenticated) {
-    return null; // Will redirect in useEffect
-  }
+    
+    // If user is authenticated and on an auth screen, redirect to home
+    if (isAuthenticated && inAuthGroup) {
+      router.replace('/');
+    }
+  }, [isAuthenticated, isLoading, segments, router, requireAuth, redirectTo]);
 
   return <>{children}</>;
-};
-
-interface ProtectedRouteProps {
-  children: React.ReactNode;
 }
-
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  return (
-    <AuthGuard requireAuth={true}>
-      {children}
-    </AuthGuard>
-  );
-};
-
-interface PublicRouteProps {
-  children: React.ReactNode;
-}
-
-export const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
-  return (
-    <AuthGuard requireAuth={false}>
-      {children}
-    </AuthGuard>
-  );
-};
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-  },
-});

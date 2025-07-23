@@ -1,358 +1,252 @@
-import { 
-  DashboardStats, 
-  MonthlySpending, 
-  CategorySpending, 
-  UpcomingBill, 
+import {
+  MonthlySpending,
+  CategorySpending,
+  UpcomingBill,
   RecentActivity,
   Subscription,
-  CurrencyBreakdown
-} from '@/types';
-import { 
-  convertCurrency, 
-  batchConvertCurrency, 
-  calculateAnnualCost, 
-  calculateMonthlyCost 
-} from './currencyUtils';
+} from "@/types";
+import { batchConvertCurrency } from "./currencyUtils";
 
 /**
- * Transform dashboard stats with currency conversion
- * @param stats Original dashboard stats
- * @param targetCurrency Target currency for conversion
- * @returns Transformed dashboard stats with converted values
+ * Calculate trend percentage between current and previous values
+ * @param current Current value
+ * @param previous Previous value
+ * @returns Trend object with direction and percentage
  */
-export const transformDashboardStats = async (
-  stats: DashboardStats,
-  targetCurrency: string
-): Promise<DashboardStats> => {
-  // If stats are already in target currency, return as is
-  if (stats.displayCurrency === targetCurrency) {
-    return stats;
+export const calculateTrend = (current: number, previous: number) => {
+  if (previous === 0) {
+    return { direction: "stable" as const, percentage: 0 };
   }
-  
-  // Convert currency breakdowns
-  const convertedBreakdowns: CurrencyBreakdown[] = [];
-  
-  for (const breakdown of stats.currencyBreakdowns) {
-    // Skip if already in target currency
-    if (breakdown.currency === targetCurrency) {
-      convertedBreakdowns.push(breakdown);
-      continue;
-    }
-    
-    // Convert to target currency
-    const result = await convertCurrency(
-      breakdown.totalCost,
-      breakdown.currency,
-      targetCurrency
-    );
-    
-    if (result) {
-      convertedBreakdowns.push({
-        ...breakdown,
-        convertedCost: result.convertedAmount,
-        exchangeRate: result.exchangeRate
-      });
-    } else {
-      // If conversion fails, keep original values
-      convertedBreakdowns.push(breakdown);
-    }
+
+  const difference = current - previous;
+  const percentage = Math.round((Math.abs(difference) / previous) * 100);
+
+  if (difference > 0) {
+    return { direction: "up" as const, percentage };
+  } else if (difference < 0) {
+    return { direction: "down" as const, percentage };
+  } else {
+    return { direction: "stable" as const, percentage: 0 };
   }
-  
-  // Calculate new totals based on converted values
-  let totalMonthlyCost = 0;
-  let totalAnnualCost = 0;
-  
-  convertedBreakdowns.forEach(breakdown => {
-    totalMonthlyCost += breakdown.convertedCost || breakdown.totalCost;
-  });
-  
-  totalAnnualCost = totalMonthlyCost * 12;
-  
-  return {
-    ...stats,
-    totalMonthlyCost,
-    totalAnnualCost,
-    displayCurrency: targetCurrency,
-    currencyBreakdowns: convertedBreakdowns
-  };
 };
 
 /**
- * Transform monthly spending data with currency conversion
- * @param spending Array of monthly spending data
- * @param targetCurrency Target currency for conversion
- * @returns Transformed monthly spending data with converted values
+ * Transform monthly spending data to target currency
+ * @param data Original monthly spending data
+ * @param targetCurrency Target currency code
+ * @returns Transformed monthly spending data
  */
 export const transformMonthlySpending = async (
-  spending: MonthlySpending[],
+  data: MonthlySpending[],
   targetCurrency: string
 ): Promise<MonthlySpending[]> => {
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  // Skip conversion if all items are already in target currency
+  const needsConversion = data.some((item) => item.currency !== targetCurrency);
+  if (!needsConversion) {
+    return data;
+  }
+
   // Prepare items for batch conversion
-  const items = spending.map(item => ({
-    ...item,
-    amount: item.totalCost,
-  }));
-  
-  // Perform batch conversion
-  const convertedItems = await batchConvertCurrency(items, targetCurrency);
-  
-  // Transform back to MonthlySpending format
-  return convertedItems.map(item => ({
+  const items = data.map((item) => ({
     month: item.month,
     year: item.year,
+    amount: item.totalCost,
+    currency: item.currency,
+  }));
+
+  // Perform batch conversion with type assertion
+  const convertedItems = await batchConvertCurrency(
+    items as { amount: number; currency: string }[],
+    targetCurrency
+  );
+
+  // Transform back to MonthlySpending format
+  return convertedItems.map((item, index) => ({
+    month: items[index]?.month || "",
+    year: items[index]?.year || 0,
     totalCost: item.convertedAmount,
-    currency: targetCurrency
+    currency: targetCurrency,
   }));
 };
 
 /**
- * Transform category spending data with currency conversion
- * @param spending Array of category spending data
- * @param targetCurrency Target currency for conversion
- * @returns Transformed category spending data with converted values
+ * Transform category spending data to target currency
+ * @param data Original category spending data
+ * @param targetCurrency Target currency code
+ * @returns Transformed category spending data
  */
 export const transformCategorySpending = async (
-  spending: CategorySpending[],
+  data: CategorySpending[],
   targetCurrency: string
 ): Promise<CategorySpending[]> => {
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  // Skip conversion if all items are already in target currency
+  const needsConversion = data.some((item) => item.currency !== targetCurrency);
+  if (!needsConversion) {
+    return data;
+  }
+
   // Prepare items for batch conversion
-  const items = spending.map(item => ({
-    ...item,
-    amount: item.totalCost,
-  }));
-  
-  // Perform batch conversion
-  const convertedItems = await batchConvertCurrency(items, targetCurrency);
-  
-  // Transform back to CategorySpending format
-  return convertedItems.map(item => ({
+  const items = data.map((item) => ({
     categoryId: item.categoryId,
     categoryName: item.categoryName,
     categoryColor: item.categoryColor,
-    totalCost: item.convertedAmount,
     subscriptionCount: item.subscriptionCount,
-    currency: targetCurrency
+    amount: item.totalCost,
+    currency: item.currency,
+  }));
+
+  // Perform batch conversion with type assertion
+  const convertedItems = await batchConvertCurrency(
+    items as { amount: number; currency: string }[],
+    targetCurrency
+  );
+
+  // Transform back to CategorySpending format
+  return convertedItems.map((item, index) => ({
+    categoryId: items[index]?.categoryId || 0,
+    categoryName: items[index]?.categoryName || "",
+    categoryColor: items[index]?.categoryColor || "#000000",
+    totalCost: item.convertedAmount,
+    subscriptionCount: items[index]?.subscriptionCount || 0,
+    currency: targetCurrency,
   }));
 };
 
 /**
- * Transform upcoming bills data with currency conversion
- * @param bills Array of upcoming bill data
- * @param targetCurrency Target currency for conversion
- * @returns Transformed upcoming bills data with converted values
+ * Transform upcoming bills data to target currency
+ * @param data Original upcoming bills data
+ * @param targetCurrency Target currency code
+ * @returns Transformed upcoming bills data
  */
 export const transformUpcomingBills = async (
-  bills: UpcomingBill[],
+  data: UpcomingBill[],
   targetCurrency: string
 ): Promise<UpcomingBill[]> => {
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  // Skip conversion if all items are already in target currency
+  const needsConversion = data.some((item) => item.currency !== targetCurrency);
+  if (!needsConversion) {
+    return data;
+  }
+
   // Prepare items for batch conversion
-  const items = bills.map(item => ({
-    ...item,
-    amount: item.cost,
-  }));
-  
-  // Perform batch conversion
-  const convertedItems = await batchConvertCurrency(items, targetCurrency);
-  
-  // Transform back to UpcomingBill format
-  return convertedItems.map(item => ({
+  const items = data.map((item) => ({
     subscriptionId: item.subscriptionId,
     subscriptionName: item.subscriptionName,
-    cost: item.convertedAmount,
-    currency: targetCurrency,
     dueDate: item.dueDate,
     daysUntilDue: item.daysUntilDue,
-    categoryColor: item.categoryColor
+    categoryColor: item.categoryColor,
+    amount: item.cost,
+    currency: item.currency,
+  }));
+
+  // Perform batch conversion with type assertion
+  const convertedItems = await batchConvertCurrency(
+    items as { amount: number; currency: string }[],
+    targetCurrency
+  );
+
+  // Transform back to UpcomingBill format
+  return convertedItems.map((item, index) => ({
+    subscriptionId: items[index]?.subscriptionId || 0,
+    subscriptionName: items[index]?.subscriptionName || "",
+    cost: item.convertedAmount,
+    currency: targetCurrency,
+    dueDate: items[index]?.dueDate || new Date(),
+    daysUntilDue: items[index]?.daysUntilDue || 0,
+    categoryColor: items[index]?.categoryColor || "#000000",
   }));
 };
 
 /**
- * Transform recent activity data with currency conversion
- * @param activities Array of recent activity data
- * @param targetCurrency Target currency for conversion
- * @returns Transformed recent activity data with converted values
+ * Transform recent activity data to target currency
+ * @param data Original recent activity data
+ * @param targetCurrency Target currency code
+ * @returns Transformed recent activity data
  */
 export const transformRecentActivity = async (
-  activities: RecentActivity[],
+  data: RecentActivity[],
   targetCurrency: string
 ): Promise<RecentActivity[]> => {
-  // Filter activities that have cost and currency
-  const activitiesWithCost = activities.filter(
-    activity => activity.cost !== undefined && activity.currency !== undefined
-  );
-  
-  const activitiesWithoutCost = activities.filter(
-    activity => activity.cost === undefined || activity.currency === undefined
-  );
-  
-  if (activitiesWithCost.length === 0) {
-    return activities;
+  if (!data || data.length === 0) {
+    return [];
   }
-  
+
+  // Separate activities with and without cost
+  const activitiesWithCost = data.filter(
+    (item) => item.cost !== undefined && item.currency !== undefined
+  );
+  const activitiesWithoutCost = data.filter(
+    (item) => item.cost === undefined || item.currency === undefined
+  );
+
+  // Skip conversion if no items with cost
+  if (activitiesWithCost.length === 0) {
+    return data;
+  }
+
   // Prepare items for batch conversion
-  const items = activitiesWithCost.map(item => ({
-    ...item,
-    amount: item.cost!,
-  }));
-  
-  // Perform batch conversion
-  const convertedItems = await batchConvertCurrency(items, targetCurrency);
-  
-  // Transform back to RecentActivity format
-  const convertedActivities = convertedItems.map(item => ({
+  const items = activitiesWithCost.map((item) => ({
     id: item.id,
     type: item.type,
     subscriptionName: item.subscriptionName,
     description: item.description,
     timestamp: item.timestamp,
-    cost: item.convertedAmount,
-    currency: targetCurrency
+    amount: item.cost!,
+    currency: item.currency!,
   }));
-  
-  // Combine with activities that don't have cost
+
+  // Perform batch conversion with type assertion
+  const convertedItems = await batchConvertCurrency(
+    items as { amount: number; currency: string }[],
+    targetCurrency
+  );
+
+  // Transform back to RecentActivity format with proper typing
+  const convertedActivities = convertedItems.map((item, index) => ({
+    id: items[index]?.id || 0,
+    type: items[index]?.type || "created",
+    subscriptionName: items[index]?.subscriptionName || "",
+    description: items[index]?.description || "",
+    timestamp: items[index]?.timestamp || new Date(),
+    cost: item.convertedAmount,
+    currency: targetCurrency,
+  }));
+
   return [...convertedActivities, ...activitiesWithoutCost];
 };
 
 /**
- * Calculate subscription statistics
- * @param subscriptions Array of subscriptions
- * @param targetCurrency Target currency for conversion
- * @returns Dashboard statistics based on subscriptions
+ * Group subscriptions by currency
+ * @param subscriptions List of subscriptions
+ * @returns Map of currency to subscriptions
  */
-export const calculateSubscriptionStats = async (
-  subscriptions: Subscription[],
-  targetCurrency: string
-): Promise<{
-  totalSubscriptions: number;
-  activeSubscriptions: number;
-  totalMonthlyCost: number;
-  totalAnnualCost: number;
-  upcomingBills: number;
-  trialEnding: number;
-  currencyBreakdowns: CurrencyBreakdown[];
-}> => {
-  const totalSubscriptions = subscriptions.length;
-  const activeSubscriptions = subscriptions.filter(sub => sub.isActive).length;
-  
-  // Group subscriptions by currency
+export const groupSubscriptionsByCurrency = (
+  subscriptions: Subscription[]
+): Record<string, Subscription[]> => {
   const currencyGroups: Record<string, Subscription[]> = {};
-  
-  subscriptions.forEach(sub => {
-    if (!sub.isActive) return;
-    
+
+  subscriptions.forEach((sub) => {
+    if (!sub.isActive || !sub.currency) return;
+
     if (!currencyGroups[sub.currency]) {
       currencyGroups[sub.currency] = [];
     }
-    currencyGroups[sub.currency].push(sub);
+
+    // Use optional chaining to safely access and update
+    currencyGroups[sub.currency]?.push(sub);
   });
-  
-  // Calculate currency breakdowns
-  const currencyBreakdowns: CurrencyBreakdown[] = [];
-  let totalMonthlyCost = 0;
-  
-  for (const [currency, subs] of Object.entries(currencyGroups)) {
-    // Calculate total cost in this currency
-    const totalCost = subs.reduce((sum, sub) => {
-      return sum + calculateMonthlyCost(sub.cost, sub.billingCycle);
-    }, 0);
-    
-    // Convert to target currency if needed
-    let convertedCost = totalCost;
-    let exchangeRate = 1;
-    
-    if (currency !== targetCurrency) {
-      const result = await convertCurrency(totalCost, currency, targetCurrency);
-      if (result) {
-        convertedCost = result.convertedAmount;
-        exchangeRate = result.exchangeRate;
-      }
-    }
-    
-    currencyBreakdowns.push({
-      currency,
-      totalCost,
-      subscriptionCount: subs.length,
-      convertedCost,
-      exchangeRate
-    });
-    
-    totalMonthlyCost += convertedCost;
-  }
-  
-  // Calculate annual cost
-  const totalAnnualCost = totalMonthlyCost * 12;
-  
-  // Count upcoming bills (due in next 7 days)
-  const now = new Date();
-  const sevenDaysLater = new Date(now);
-  sevenDaysLater.setDate(now.getDate() + 7);
-  
-  const upcomingBills = subscriptions.filter(sub => {
-    if (!sub.isActive) return false;
-    const nextBilling = new Date(sub.nextBillingDate);
-    return nextBilling >= now && nextBilling <= sevenDaysLater;
-  }).length;
-  
-  // Count trials ending in next 7 days
-  const trialEnding = subscriptions.filter(sub => {
-    if (!sub.isActive || !sub.isTrial || !sub.trialEndDate) return false;
-    const trialEnd = new Date(sub.trialEndDate);
-    return trialEnd >= now && trialEnd <= sevenDaysLater;
-  }).length;
-  
-  return {
-    totalSubscriptions,
-    activeSubscriptions,
-    totalMonthlyCost,
-    totalAnnualCost,
-    upcomingBills,
-    trialEnding,
-    currencyBreakdowns
-  };
-};
 
-/**
- * Generate trend indicators for dashboard metrics
- * @param currentValue Current metric value
- * @param previousValue Previous metric value
- * @returns Trend information
- */
-export const calculateTrend = (
-  currentValue: number,
-  previousValue: number
-): { direction: 'up' | 'down' | 'stable'; percentage: number } => {
-  if (previousValue === 0) {
-    return { direction: 'stable', percentage: 0 };
-  }
-  
-  const difference = currentValue - previousValue;
-  const percentage = Math.abs((difference / previousValue) * 100);
-  
-  if (Math.abs(percentage) < 0.5) {
-    return { direction: 'stable', percentage: 0 };
-  }
-  
-  return {
-    direction: difference > 0 ? 'up' : 'down',
-    percentage: Math.round(percentage * 10) / 10 // Round to 1 decimal place
-  };
-};
-
-/**
- * Format date range for analytics
- * @param startDate Start date
- * @param endDate End date
- * @returns Formatted date range string
- */
-export const formatDateRange = (startDate: Date, endDate: Date): string => {
-  const options: Intl.DateTimeFormatOptions = { 
-    month: 'short', 
-    day: 'numeric',
-    year: startDate.getFullYear() !== endDate.getFullYear() ? 'numeric' : undefined
-  };
-  
-  const start = startDate.toLocaleDateString(undefined, options);
-  const end = endDate.toLocaleDateString(undefined, options);
-  
-  return `${start} - ${end}`;
+  return currencyGroups;
 };

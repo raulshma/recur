@@ -7,15 +7,18 @@ import {
   Image,
   ImageSourcePropType,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '@/constants/config';
 
 interface EmptyStateProps {
   title: string;
   message: string;
-  icon?: string; // Emoji
+  icon?: string; // Ionicons name or emoji
   image?: ImageSourcePropType;
-  actionLabel?: string;
+  actionText?: string;
+  actionLabel?: string; // Added for backward compatibility
   onAction?: () => void;
+  onRetry?: () => void;
   isError?: boolean;
 }
 
@@ -24,13 +27,21 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   message,
   icon,
   image,
-  actionLabel,
+  actionText,
+  actionLabel, // Added for backward compatibility
   onAction,
+  onRetry,
   isError = false,
 }) => {
+  // Use actionLabel as fallback for actionText
+  const buttonText = actionText || actionLabel;
   return (
     <View style={styles.container}>
-      {icon && <Text style={styles.icon}>{icon}</Text>}
+      {icon && icon.includes('-') ? (
+        <Ionicons name={icon as any} size={64} color={isError ? THEME.COLORS.ERROR : THEME.COLORS.TEXT_SECONDARY} style={styles.iconComponent} />
+      ) : icon ? (
+        <Text style={styles.icon}>{icon}</Text>
+      ) : null}
       
       {image && (
         <Image
@@ -46,14 +57,23 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       
       <Text style={styles.message}>{message}</Text>
       
-      {actionLabel && onAction && (
+      {buttonText && onAction && (
         <TouchableOpacity
           style={[styles.actionButton, isError && styles.errorActionButton]}
           onPress={onAction}
         >
           <Text style={[styles.actionLabel, isError && styles.errorActionLabel]}>
-            {actionLabel}
+            {buttonText}
           </Text>
+        </TouchableOpacity>
+      )}
+      
+      {onRetry && (
+        <TouchableOpacity
+          style={[styles.retryButton]}
+          onPress={onRetry}
+        >
+          <Text style={styles.retryLabel}>Try Again</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -62,6 +82,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     padding: THEME.SPACING.XL,
     alignItems: 'center',
     justifyContent: 'center',
@@ -69,6 +90,9 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 64,
+    marginBottom: THEME.SPACING.LG,
+  },
+  iconComponent: {
     marginBottom: THEME.SPACING.LG,
   },
   image: {
@@ -110,5 +134,15 @@ const styles = StyleSheet.create({
   },
   errorActionLabel: {
     color: 'white',
+  },
+  retryButton: {
+    marginTop: THEME.SPACING.MD,
+    paddingVertical: THEME.SPACING.SM,
+    paddingHorizontal: THEME.SPACING.LG,
+  },
+  retryLabel: {
+    color: THEME.COLORS.PRIMARY,
+    fontSize: THEME.FONT_SIZES.MD,
+    fontWeight: '500',
   },
 });

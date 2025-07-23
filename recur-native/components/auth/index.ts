@@ -1,3 +1,2 @@
-export { AuthGuard, ProtectedRoute, PublicRoute } from './AuthGuard';
-export { withAuth, withProtectedRoute, withPublicRoute } from './withAuth';
+export { AuthGuard } from './AuthGuard';
 export { AuthProvider } from './AuthProvider';

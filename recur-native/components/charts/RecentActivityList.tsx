@@ -17,7 +17,7 @@ interface RecentActivityListProps {
 
 export const RecentActivityList: React.FC<RecentActivityListProps> = ({
   data,
-  currency,
+  currency: _currency,
   isLoading,
   maxItems = 5,
   showViewAll = true,
@@ -66,7 +66,7 @@ export const RecentActivityList: React.FC<RecentActivityListProps> = ({
   };
   
   // Navigate to subscription details
-  const navigateToSubscription = (subscriptionName: string) => {
+  const navigateToSubscription = (_subscriptionName: string) => {
     // In a real app, we would navigate to the specific subscription
     // For now, just navigate to the subscriptions tab
     router.push('/(tabs)/subscriptions');

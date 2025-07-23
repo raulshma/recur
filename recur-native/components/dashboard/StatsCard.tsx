@@ -103,7 +103,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
     <Card 
       variant="elevated" 
       style={[styles.card, style]} 
-      onPress={onPress}
+      {...(onPress && { onPress })}
     >
       {isLoading ? (
         <View style={styles.loadingContainer}>
