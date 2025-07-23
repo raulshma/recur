@@ -53,25 +53,75 @@ const getEnvironment = (): Environment => {
 
 /**
  * Get the appropriate API URL based on platform and environment
- * This handles the special case for Android emulator where localhost
- * needs to be 10.0.2.2 to access the host machine
+ * This handles different scenarios:
+ * - Android emulator: 10.0.2.2
+ * - iOS simulator: localhost
+ * - Physical device: Your computer's IP address (you'll need to set this)
  */
 const getApiUrl = (env: Environment): string => {
-  // For Android emulator, localhost needs to be 10.0.2.2
-  const isAndroidEmulator = Platform.OS === "android" && __DEV__;
-  const localUrl = isAndroidEmulator
-    ? "http://10.0.2.2:7061/api"
-    : "http://localhost:7061/api";
+  // Get host and port from environment variables with fallbacks
+  const apiHost = process.env.EXPO_PUBLIC_API_HOST || "192.168.0.187";
+  const apiPort = process.env.EXPO_PUBLIC_API_PORT || "7061";
 
+  // Enhanced device detection with better logic
+  const isAndroidEmulator =
+    Platform.OS === "android" &&
+    (Constants.platform?.android?.isDevice === false ||
+      Constants.deviceName?.includes("emulator") ||
+      Constants.deviceName?.includes("simulator"));
+
+  const isIOSSimulator =
+    Platform.OS === "ios" &&
+    (Constants.platform?.ios?.simulator === true ||
+      Constants.deviceName?.includes("Simulator"));
+
+  const isPhysicalDevice = !isAndroidEmulator && !isIOSSimulator;
+
+  // Debug logging for development
+  if (__DEV__) {
+    console.log("=== API URL Configuration Debug ===");
+    console.log("Platform:", Platform.OS);
+    console.log("Device Name:", Constants.deviceName);
+    console.log("Android isDevice:", Constants.platform?.android?.isDevice);
+    console.log("iOS simulator:", Constants.platform?.ios?.simulator);
+    console.log("Detected as Android Emulator:", isAndroidEmulator);
+    console.log("Detected as iOS Simulator:", isIOSSimulator);
+    console.log("Detected as Physical Device:", isPhysicalDevice);
+    console.log("API Host from env:", apiHost);
+
+    console.log("Environment:", env);
+    console.log("=====================================");
+  }
+
+  // For development, determine the appropriate local URL
+  if (env === "development") {
+    let url: string;
+
+    if (isAndroidEmulator) {
+      // Android emulator - use special IP that maps to host machine
+      url = "http://10.0.2.2:7061/api";
+      if (__DEV__) console.log("✅ Using Android Emulator URL:", url);
+    } else if (isPhysicalDevice) {
+      // Physical device - use network IP (HTTP not HTTPS for local dev)
+      url = `http://${apiHost}:${apiPort}/api`;
+      if (__DEV__) console.log("✅ Using Physical Device URL:", url);
+    } else {
+      // iOS simulator or fallback - use localhost
+      url = "http://localhost:7061/api";
+      if (__DEV__) console.log("✅ Using iOS Simulator/Fallback URL:", url);
+    }
+
+    return url;
+  }
+
+  // Production/staging URLs
   switch (env) {
-    case "development":
-      return localUrl;
     case "staging":
       return "https://staging-api.recur-app.com/api";
     case "production":
       return "https://api.recur-app.com/api";
     default:
-      return localUrl;
+      return "http://localhost:7061/api";
   }
 };
 

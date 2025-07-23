@@ -4,6 +4,7 @@ import { useAppSettingsStore } from '@/store/appSettingsStore';
 import { authStorage } from '@/services/storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { AppState, AppStateStatus } from 'react-native';
+import { debugApiConfig } from '@/utils/debugApiConfig';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -53,6 +54,11 @@ export const useAppInitialization = () => {
     const initializeApp = async () => {
       try {
         setError(null);
+        
+        // Debug API configuration in development
+        if (__DEV__) {
+          debugApiConfig();
+        }
         
         // Initialize app settings and check authentication status
         await Promise.all([

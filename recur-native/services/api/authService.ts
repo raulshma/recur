@@ -6,7 +6,6 @@ import {
   User,
   UpdateProfileDto,
   ChangePasswordDto,
-  ApiResponse,
 } from '@/types';
 import { authStorage, secureStorage } from '@/services/storage';
 import { STORAGE_KEYS } from '@/constants/config';
@@ -38,8 +37,20 @@ class AuthServiceImpl implements AuthService {
   private tokenRefreshPromise: Promise<string> | null = null;
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', credentials);
-    return response.data;
+    const response = await api.post<{
+      token: string;
+      expires: string;
+      user: User;
+      refreshToken?: string;
+    }>('/auth/login', credentials);
+    
+    // Transform the API response to match our AuthResponse interface
+    return {
+      token: response.token,
+      refreshToken: response.refreshToken || '', // Provide empty string if not present
+      user: response.user,
+      expiresAt: new Date(response.expires), // Convert string to Date
+    };
   }
 
   async logout(): Promise<void> {
@@ -74,11 +85,11 @@ class AuthServiceImpl implements AuthService {
         throw new Error('No refresh token available');
       }
 
-      const response = await api.post<ApiResponse<{ token: string; refreshToken: string }>>('/auth/refresh', {
+      const response = await api.post<{ token: string; refreshToken: string }>('/auth/refresh', {
         refreshToken,
       });
 
-      const { token, refreshToken: newRefreshToken } = response.data;
+      const { token, refreshToken: newRefreshToken } = response;
 
       // Update stored tokens
       await Promise.all([
@@ -95,13 +106,13 @@ class AuthServiceImpl implements AuthService {
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await api.get<ApiResponse<User>>('/auth/me');
-    return response.data;
+    const response = await api.get<User>('/auth/me');
+    return response;
   }
 
   async updateProfile(profile: UpdateProfileDto): Promise<User> {
-    const response = await api.put<ApiResponse<User>>('/auth/profile', profile);
-    return response.data;
+    const response = await api.put<User>('/auth/profile', profile);
+    return response;
   }
 
   async changePassword(passwords: ChangePasswordDto): Promise<void> {

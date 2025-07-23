@@ -10,6 +10,12 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure the server to listen on all network interfaces for development
+if (builder.Environment.IsDevelopment())
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:7061", "https://0.0.0.0:7062");
+}
+
 // Add services to the container
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -80,7 +86,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000") // Vite and CRA default ports
+        policy.WithOrigins(
+                "http://localhost:5173", 
+                "http://localhost:3000", // Vite and CRA default ports
+                "http://192.168.0.187:7061", // Your network IP for mobile
+                "http://10.0.2.2:7061" // Android emulator
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -116,7 +127,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Only use HTTPS redirection in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("AllowReactApp");
 
 // TODO: Enable rate limiter when properly configured

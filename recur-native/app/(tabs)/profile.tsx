@@ -48,6 +48,19 @@ export default function ProfileTab() {
             </View>
             <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.TEXT_SECONDARY} />
           </TouchableOpacity>
+          
+          {__DEV__ && (
+            <TouchableOpacity 
+              style={styles.settingsItem}
+              onPress={() => router.push('/debug/network')}
+            >
+              <View style={styles.settingsItemContent}>
+                <Ionicons name="bug-outline" size={24} color={THEME.COLORS.TEXT_PRIMARY} />
+                <Text style={styles.settingsItemText}>Network Diagnostics</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.TEXT_SECONDARY} />
+            </TouchableOpacity>
+          )}
         </View>
         
         <Button 
